@@ -76,11 +76,17 @@ clean_and_compile <- function(df_hh, df_ind, wave_number){
   return(df_combined)
 }
 
+get_key_xwavevars <- function(file_name){
 
+  # Define key vars
+  key_xwave <- c("ukborn", "bornuk_dv", "racel_dv", "ethn_dv", "scend_dv", "j1soc00_cc",
+                 "maid", "macob", "maedqf", "masoc00_cc", "paid", "pacob", "paedqf", "pasoc00_cc")
+  df_key_xwave <- select(w7_hhresp, one_of(key_hhresp))
 
-
-
-#### WAIT BUT IF I WANT TO ADD ALL OF THE OBSERVATIONS TO 1 DF, I NEED TO GENERALIZE VARIABLE NAMES, NO?
+  
+  
+  }
+  
 
 
 ```

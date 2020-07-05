@@ -21,7 +21,7 @@ library("naniar")
 
 ```{r}
 # Set working directory
-setwd("~/Documents/LSE_new/03_Dissertation/Understanding_Society")
+setwd("~/Documents/LSE_new/03_Dissertation/Understanding_Society/dissertation")
 
 # Use functions from 'helpers.R' file
 source("helpers.R")
