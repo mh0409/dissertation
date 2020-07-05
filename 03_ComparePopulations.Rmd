@@ -1,0 +1,207 @@
+---
+title: "03_ComparePopulations"
+author: "Maria Jose Herrera"
+date: "6/28/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library("tidyverse")
+library("ggplot2")
+library("reshape2")
+```
+
+
+Define mortgage prisoners: 1) self-employed 
+                           2) interest-only mortgages
+                           3) spending >33% income on mortgage repayment 
+                              OR report having had a hard time making mortgage repayments over the last 12 months
+
+# Load data
+```{r}
+# List of files to open (final mtg prisoner + conditions individually for desc stats)
+files <- list(
+  # all mtg prisoners
+  "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_all_incl_mtgprisoners.rds",
+  # those that meet condition 1: self-employed
+  "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_cond1.rds",
+  # those that meet condition 2: interest-only mtg
+  "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_cond2.rds",
+  # those that meet condition 3_1: spending > 33% of monthly income on mtg repayment
+  "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/cond3_1.rds",
+  # those that meet condition 3_2: report having a hard-time making mtg repayments over the last 12 months
+  "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/cond3_2.rds",
+  "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners.rds") 
+
+# Read in data
+data_files <- lapply(files, readRDS)
+
+# Assign names to each (based on order above)
+df_all <- data_files[[1]]
+df_cond1 <- data_files[[2]]
+df_cond2 <- data_files[[3]]
+df_cond3_1 <- data_files[[4]]
+df_cond3_2 <- data_files[[5]]
+df_mtgprisoners <- data_files[[6]]
+
+
+```
+
+# Categorize variables
+```{r}
+# Numeric
+ numeric_vars <- c("fihhmnnet1_dv", # total monthly income, no deductions
+                   "hscost", # original purchase price of property
+                   "hsval", # value of property: home owners
+                   "mglife", # years left to pay: mortgage
+                   "hhsize", # household size
+                   "mgold", # initial mortgage	
+                   "houscost1_dv", # monthly housing cost /in/cluding mortgage principal payments 
+                   "houscost2_dv", # monthly housing cost /ex/cluding mortgage principal payments
+                   "fimnnet_dv", # Own total estimated net monthly income
+                   "fimnlabnet_dv", # Own total estimated net monthly income from labour
+                   "scend_dv", # school leaving age (xwavedat)
+                   "scghq1_dv", # Subjective wellbeing: Likert
+                   "scghq2_dv", # Subjective wellbeing: Caseness
+                   "age_dv", # Age at time of interview, derived
+                   "nchild_dv", # Number of kids in the household
+                   "prfitba") # Total personal income annually
+
+
+
+# Categorical
+cat_vars <- c("hsyr04", # year mortgage began
+              "mgtype", # mortgage type
+              "hiqual_dv", #Highest qualification
+              "jbsoc00_cc", # Standard socio-economic classification (SOC 2000) of current job; condensed 3 digit version
+              "jbnssec8_dv", # Current job (eight class ns-sec)
+              "jbnssec5_dv", # Current job (five class ns-sec)
+              "sbnssec3_dv", # Current job (three class ns-sec)
+              "sf12mcs_dv", # SF-12 mental health component score, derived
+              "sf12pcs_dv", # Sf-12: physical health component score, derived
+              "health", # Long-standing illness or disability
+              "country", # Country in the UK
+              "gor_dv", # Region in the UK
+              "urban_dv", # Urban or rural area, derived
+              "sex_dv", # sex, derived
+              "marstat", # Marital status
+              "jbstat", # Employment status
+              "jbsemp", # Employed or self-employed
+              "racel_dv", # Ethnic group (self-reported) (indresp)
+              "ethn_dv", # Ethnic group - derived from multiple sources (indresp)
+  # Need to re-run code to get this var #   "j1soc00_cc", # Standard Socio-economic Classification (SOC 2000) of first job after leaving full-time education. Condensed three-digit version (xwavedat)
+              "maid", # mother's ethnic group (xwavedat)
+              "macob", # mother's country of birth (xwavedat)
+              "maedqf", # mother's educational qualification when respondent was aged 14 (xwavedat)
+              "asoc00_cc", # Standard Occupational Classification 2000 of mother's job when respondent was aged 14 (xwavedat)
+              "paid", # father's ethnic group (xwavedat)
+              "pacob", # father's country of birth (xwavedat)
+              "paedqf", # father's educational qualification when respondent was aged 14 (xwavedat)
+              "pasoc00_cc") # Standard Occupational Classification 2000 of father's job when respondent was aged 14 (xwavedat)
+
+
+```
+
+
+# Calculate number of people per household (NB THERES A VARIABLE THAT DOES THIS SO THIS IS USELESS)
+## Applying all conditions
+```{r}
+# For entire population
+count_perhh <- df_all %>% count(hidp)
+
+all <- summary(count_perhh$n) # mean is 1.862, median is 2, min is 1, max is 11
+
+# For non-mortgage prisoners
+nonmtg_count_perhh <- df_all[df_all$is_mtgprisoner == 0, ] %>% count(hidp)
+non_mtg <- summary(nonmtg_count_perhh$n) # mean is 1.769, median is 2, min is 1, max is 8
+
+# For mortgage prisoners
+mtg_count_perhh <- df_all[df_all$is_mtgprisoner == 1, ] %>% count(hidp)
+all_mtg_prisoners <- summary(mtg_count_perhh$n) # mean is 1.544, median is 1, min is 1, max is 9
+
+## TODO: Do these descriptive stats by condition (why is mean lower than non-mortgage prisoners?
+
+```
+
+## Apply condition 1
+```{r}
+# For condition 1: self-employed
+cond1_count_perhh <- df_cond1 %>% count(hidp)
+cond1 <- summary(cond1_count_perhh$n) # mean number of people in a hh is 1.104, median is 1, min is 1, max is 4
+
+ggplot(count_perhh) +
+  geom_bar(aes(x = n))
+```
+
+## Apply condition 2
+```{r}
+# For condition 2: interest-only mortgages
+cond2_count_perhh <- df_cond2 %>% count(hidp)
+cond2 <- summary(cond2_count_perhh$n) # mean number of people in a hh is 1.837, median is 2, min is 1, max is 11
+
+ggplot(count_perhh) +
+  geom_bar(aes(x = n))
+                           
+```
+
+## Apply condition 3_1
+```{r}
+# For condition 3_1: spending >33% income on mortgage repayment 
+cond31_count_perhh <- df_cond3_1 %>% count(hidp)
+cond3_1 <- summary(cond31_count_perhh$n) # mean number of people in a hh is 1.574, median is 1, min is 1, max is 5                 
+
+ggplot(count_perhh) +
+  geom_bar(aes(x = n))
+```
+
+
+## Apply condition 3_2
+```{r}
+# For condition 3_2: report having had a hard time making mortgage repayments over
+cond32_count_perhh <- df_cond3_2 %>% count(hidp)
+cond3_2 <- summary(cond32_count_perhh$n) # mean number of people in a hh is 1.889, median is 2, min is 1, max is 8
+
+ggplot(count_perhh) +
+  geom_bar(aes(x = n))
+
+```
+
+
+# Compare household size
+
+```{r}
+df_summary <- as.data.frame(do.call(cbind, lapply(list("All" = count_perhh$n, "All non-mtg prisoners" = nonmtg_count_perhh$n, "All mtg. prisoners" = mtg_count_perhh$n,"Cond. 1" = cond1_count_perhh$n, "Cond. 2" = cond2_count_perhh$n, "Cond. 3_1" = cond31_count_perhh$n, "Cond. 3_2" = cond32_count_perhh$n), summary)))
+
+df_summary <- as.data.frame(t(df_summary))
+df_summary
+
+saveRDS(df_summary, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/hhsize_summary.rds")
+
+```
+
+
+# Plot all vars
+## Entire population
+```{r}
+melt_df_all <- melt(df_all)
+
+ggplot(data = melt_df_all, aes(x = value)) + 
+stat_density() + 
+facet_wrap(~variable, scales = "free")
+
+```
+
+## Just mtg prisoners
+```{r}
+melt_df_mtgprisoners <- melt(df_mtgprisoners) #df of unique mtg prisoners
+
+ggplot(data = melt_df_mtgprisoners, aes(x = value)) + 
+stat_density() + 
+facet_wrap(~variable, scales = "free")
+
+```
