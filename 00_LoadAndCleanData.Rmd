@@ -1,0 +1,252 @@
+---
+title: "Toy_Data"
+author: '35758'
+date: "4/24/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+# install.packages("haven")
+library("haven")
+library("tidyverse")
+library("naniar")
+```
+
+
+```{r}
+# Set working directory
+setwd("~/Documents/LSE_new/03_Dissertation/Understanding_Society")
+
+# Use functions from 'helpers.R' file
+source("helpers.R")
+```
+
+# Wave 1
+```{r}
+# Wave 1
+
+# Get file names
+w1_ind_file <- "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/UKDA-6614-stata/stata/stata11_se/ukhls_w1/a_indresp.dta"
+
+w1_hh_file <- "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/UKDA-6614-stata/stata/stata11_se/ukhls_w1/a_hhresp.dta"
+
+# Load and clean data
+w1_key_indresp <- get_key_indvars(w1_ind_file, 1)
+w1_key_hhresp <- get_key_hhvars(w1_hh_file, 1)
+w1_clean <- clean_and_compile(w1_key_hhresp, w1_key_indresp, 1)
+
+rm(w1_key_indresp) # remove from memory to free up space
+rm(w1_key_hhresp)
+
+# Save file
+saveRDS(w1_clean, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/w1_clean.rds")
+
+rm(w1_clean)
+
+```
+
+# Wave 2
+```{r}
+# Wave 2
+# Get file names
+w2_ind_file <- "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/UKDA-6614-stata/stata/stata11_se/ukhls_w2/b_indresp.dta"
+
+w2_hh_file <- "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/UKDA-6614-stata/stata/stata11_se/ukhls_w2/b_hhresp.dta"
+
+# Load and clean data
+w2_key_indresp <- get_key_indvars(w2_ind_file, 2)
+w2_key_hhresp <- get_key_hhvars(w2_hh_file, 2)
+w2_clean <- clean_and_compile(w2_key_hhresp, w2_key_indresp, 2)
+
+rm(w2_key_indresp) # remove from memory to free up space
+rm(w2_key_hhresp)
+
+# Save file
+saveRDS(w2_clean, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/w2_clean.rds")
+
+rm(w2_clean)
+```
+
+# Wave 3
+```{r}
+# Wave 3
+
+# Get file names
+w3_ind_file <- "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/UKDA-6614-stata/stata/stata11_se/ukhls_w3/c_indresp.dta"
+
+w3_hh_file <- "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/UKDA-6614-stata/stata/stata11_se/ukhls_w3/c_hhresp.dta"
+
+# Load and clean data
+w3_key_indresp <- get_key_indvars(w3_ind_file, 3)
+w3_key_hhresp <- get_key_hhvars(w3_hh_file, 3)
+w3_clean <- clean_and_compile(w3_key_hhresp, w3_key_indresp, 3)
+
+rm(w3_key_indresp) # remove from memory to free up space
+rm(w3_key_hhresp)
+
+# Save file
+saveRDS(w3_clean, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/w3_clean.rds")
+
+rm(w3_clean)
+```
+
+# Wave 4
+```{r}
+# Wave 4
+
+# Get file names
+w4_ind_file <- "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/UKDA-6614-stata/stata/stata11_se/ukhls_w4/d_indresp.dta"
+
+w4_hh_file <- "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/UKDA-6614-stata/stata/stata11_se/ukhls_w4/d_hhresp.dta"
+
+# Load and clean data
+w4_key_indresp <- get_key_indvars(w4_ind_file, 4)
+w4_key_hhresp <- get_key_hhvars(w4_hh_file, 4)
+w4_clean <- clean_and_compile(w4_key_hhresp, w4_key_indresp, 4)
+
+rm(w4_key_indresp) # remove from memory to free up space
+rm(w4_key_hhresp)
+
+# Save file
+saveRDS(w4_clean, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/w4_clean.rds")
+
+rm(w4_clean)
+```
+
+# Wave 5
+```{r}
+# Wave 5
+
+# Get file names
+w5_ind_file <- "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/UKDA-6614-stata/stata/stata11_se/ukhls_w5/e_indresp.dta"
+
+w5_hh_file <- "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/UKDA-6614-stata/stata/stata11_se/ukhls_w5/e_hhresp.dta"
+
+# Load and clean data
+w5_key_indresp <- get_key_indvars(w5_ind_file, 5)
+w5_key_hhresp <- get_key_hhvars(w5_hh_file, 5)
+w5_clean <- clean_and_compile(w5_key_hhresp, w5_key_indresp, 5)
+
+rm(w5_key_indresp) # remove from memory to free up space
+rm(w5_key_hhresp)
+
+# Save file
+saveRDS(w5_clean, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/w5_clean.rds")
+
+rm(w5_clean)
+```
+
+# Wave 6
+```{r}
+# Wave 6
+
+# Get file names
+w6_ind_file <- "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/UKDA-6614-stata/stata/stata11_se/ukhls_w6/f_indresp.dta"
+
+w6_hh_file <- "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/UKDA-6614-stata/stata/stata11_se/ukhls_w6/f_hhresp.dta"
+
+# Load and clean data
+w6_key_indresp <- get_key_indvars(w6_ind_file, 6)
+w6_key_hhresp <- get_key_hhvars(w6_hh_file, 6)
+w6_clean <- clean_and_compile(w6_key_hhresp, w6_key_indresp, 6)
+
+rm(w6_key_indresp) # remove from memory to free up space
+rm(w6_key_hhresp)
+
+# Save file
+saveRDS(w6_clean, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/w6_clean.rds")
+
+rm(w6_clean)
+```
+
+# Wave 7
+```{r}
+# Wave 7
+
+# Get file names 
+w7_ind_file <- "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/UKDA-6614-stata/stata/stata11_se/ukhls_w7/g_indresp.dta"
+
+w7_hh_file <- "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/UKDA-6614-stata/stata/stata11_se/ukhls_w7/g_hhresp.dta"
+
+# Load and clean data
+w7_key_indresp <- get_key_indvars(w7_ind_file, 7)
+w7_key_hhresp <- get_key_hhvars(w7_hh_file, 7)
+w7_clean <- clean_and_compile(w7_key_hhresp, w7_key_indresp, 7)
+
+rm(w7_key_indresp) # remove from memory to free up space
+rm(w7_key_hhresp)
+
+# Save file
+saveRDS(w7_clean, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/w7_clean.rds")
+
+rm(w7_clean)
+```
+
+# Wave 8
+```{r}
+# Wave 8
+
+# Get file names 
+w8_ind_file <- "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/UKDA-6614-stata/stata/stata11_se/ukhls_w8/h_indresp.dta"
+
+w8_hh_file <- "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/UKDA-6614-stata/stata/stata11_se/ukhls_w8/h_hhresp.dta"
+
+# Load and clean data
+w8_key_indresp <- get_key_indvars(w8_ind_file, 8)
+w8_key_hhresp <- get_key_hhvars(w8_hh_file, 8)
+w8_clean <- clean_and_compile(w8_key_hhresp, w8_key_indresp, 8)
+
+rm(w8_key_indresp) # remove from memory to free up space
+rm(w8_key_hhresp)
+
+# Save file
+saveRDS(w8_clean, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/w8_clean.rds")
+
+rm(w8_clean)
+```
+
+# Wave 9
+```{r}
+# Wave 9
+
+# Get file names 
+w9_ind_file <- "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/UKDA-6614-stata/stata/stata11_se/ukhls_w9/i_indresp.dta"
+
+w9_hh_file <- "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/UKDA-6614-stata/stata/stata11_se/ukhls_w9/i_hhresp.dta"
+
+# Load and clean data
+w9_key_indresp <- get_key_indvars(w9_ind_file, 9)
+w9_key_hhresp <- get_key_hhvars(w9_hh_file, 9)
+w9_clean <- clean_and_compile(w9_key_hhresp, w9_key_indresp, 9)
+
+rm(w9_key_indresp) # remove from memory to free up space
+rm(w9_key_hhresp)
+
+# Save file
+saveRDS(w9_clean, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/w9_clean.rds")
+
+rm(w9_clean)
+```
+
+# Cross-wave data
+```{r}
+# Get file names 
+xwave_file <- "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/UKDA-6614-stata/stata/stata11_se/ukhls_wx/xwavedat.dta"
+
+# Load and clean data
+key_xwave <- get_key_xwavevars(xwave_file)
+
+df_xwave_clean <- replace_with_na_all(key_xwave, condition = ~.x %in% c(-21, -20, -11, -10, -9, -8, -7, -2, -1)) # replace "missing values" with NAs
+
+# Save file
+saveRDS(df_xwave_clean, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/xwave_clean.rds")
+
+rm(df_xwave_clean)
+
+```

@@ -1,0 +1,184 @@
+---
+title: "02_DefineMtgPrisoners"
+author: "Maria Jose Herrera"
+date: "6/19/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library("tidyverse")
+library("stringr")
+library("tibble")
+
+```
+
+```{r}
+# Set working directory
+setwd("~/Documents/LSE_new/03_Dissertation/Understanding_Society")
+
+```
+
+# Definition of mortgage prisoners 
+
+Define mortgage prisoners: 1) self-employed 
+                           2) interest-only mortgages
+                           3) spending >33% income on mortgage repayment 
+                              OR report having had a hard time making mortgage repayments over the last 12 months
+
+
+```{r}
+# Use glob when reading in all data
+clean_files <- Sys.glob(file.path("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/*_clean.rds"), dirmark = FALSE) ## gets the name of all files
+
+# Read in data
+# w6_data <- readRDS("w6_clean.rds") # test set
+data_files <- lapply(clean_files, readRDS)
+
+# Regex to change the name of dfs 
+new_col_names <- str_replace_all(colnames(data_files[[2]]), "^[^_]+(?=_)_", "") # remove all wave prefixes to have uniform col names across waves
+
+# Add mgold as null for wave 1
+data_files[[1]] <- add_column(data_files[[1]], mgold = rep(NA, nrow(data_files[[1]])), .after = 30)
+
+# Rename all files
+renamed_files <- lapply(data_files[-10], setNames, nm = new_col_names) # rename columns for all except xwave
+
+# Rbind all waves into one df
+df_all <- do.call("rbind", renamed_files) # bind all except xwave
+
+# Only consider households w/ a mortgage
+df_all <- df_all[!is.na(df_all$mgtype),]
+
+# Add in only necessary xwave data for pidp
+df_all <- left_join(x = df_all, y = data_files[[10]], by = "pidp")
+
+# Save all mortgage owners
+saveRDS(df_all, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_allmtgs.rds")
+
+
+
+```
+
+# Condition 1: Self-employed
+```{r}
+# Condition 1: Self-employed
+# Variable: w_jbstat == 1 (self-employed)
+
+# wave_number <- 6
+# w_jbstat <- paste0(letters[wave_number], "_jbstat")
+# w6_cond1 <- filter(w6_data, get(w_jbstat) == 1) 
+
+cond1 <- filter(df_all, jbstat == 1) # need get() since value of variable is the actual column name
+saveRDS(cond1, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_cond1.rds")
+
+```
+
+# Condition 2: Interest only mortgage
+```{r}
+# Condition 2: Interest only mortgage
+# Variable: w_mgtype == 4 (interest-only)
+
+# wave_number <- 6
+# w_mgtype <- paste0(letters[wave_number], "_mgtype")
+# w6_cond2 <- filter(w6_data, get(w_mgtype) == 4)
+
+cond2 <- filter(df_all, mgtype == 4) # need get() since value of variable is the actual column name
+saveRDS(cond2, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_cond2.rds")
+
+```
+
+# Condition 3: Affordability
+```{r}
+# Condition 3: spending >33% income on mortgage repayment OR report having had a hard time making mortgage repayments over the last 12 months
+
+# Variable 1: fihhmnnet1_dv (total monthly income, no deductions)
+
+# wave_number <- 6
+# w_fihhmnnet1_dve <- paste0(letters[wave_number], "_fihhmnnet1_dv")
+
+# Variable 2: houscost1_dv (monthly housing cost /in/cluding mortgage principal payments) 
+
+# wave_number <- 6
+# w_houscost1_dv <- paste0(letters[wave_number], "_houscost1_dv")
+
+
+# Variable 3: houscost2_dv (monthly housing cost /ex/cluding mortgage principal payments)
+
+# wave_number <- 6
+# w_houscost2_dv <- paste0(letters[wave_number], "_houscost2_dv")
+
+
+# (Var 2 - Var 3) / Var 1 = % income spent on mtg repayment
+cond3_1 <- df_all %>% 
+  mutate(
+    mtg_principal  = houscost1_dv - houscost2_dv,
+    pct_monthly = mtg_principal / fihhmnnet1_dv) %>%
+  filter(mtg_principal>0, pct_monthly > 0.33, pct_monthly != Inf)
+
+cond3_1 <- subset(cond3_1, select = -c(mtg_principal, pct_monthly)) # dropping columns to be able to merge df's
+
+saveRDS(cond3_1, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/cond3_1.rds")
+
+
+## TODO: graph and see what's going on here
+
+# Variable 4: w_xphsdb == 1 (reported difficulty paying for housing)
+
+# wave_number <- 6
+# w_xphsdb <- paste0(letters[wave_number], "_xphsdb")
+
+cond3_2 <- filter(df_all, xphsdb == 1) # need get() since value of variable is the actual column name
+saveRDS(cond3_2, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/cond3_2.rds")
+
+
+```
+
+# Combine into 1 df
+
+```{r}
+
+# TODO: GOTTA CHANGE THE NAME FOR THE DF'S TO BE THE SAME!
+
+# Put all df's in a list
+ls_dfs <- list(cond1, cond2, cond3_1, cond3_2)
+
+# Do call to bind all df's in the list
+df_allcond <- do.call("rbind", ls_dfs)
+
+```
+
+
+# Get rid of duplicates (i.e. keeping any rows that meet any of the 1 above conditions)
+
+```{r}
+# Set variable that we want distinct
+unique_mtgprisoners <- distinct(df_allcond, pidp, .keep_all = TRUE)
+unique_mtgprisoners$is_mtgprisoner <- 1
+
+# TODO: get rid of incomplete observations?
+# TODO: record that we have 28,259 mortgage prisoners!
+# TODO: explain how i got to this number in writing!
+```
+
+# Save df of just mtg prisoners
+```{r}
+# Save df of mtg prisoners
+saveRDS(unique_mtgprisoners, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners.rds")
+
+```
+
+# Now add column to df_all that indicates mtg prisoner status
+```{r}
+# Get id's of mtg prisoners
+mtgprisoner_ids <- paste0(unique_mtgprisoners$pidp, unique_mtgprisoners$hidp) # trying to get same number (28k) as before since PIDP+ HIDP is unique
+
+# Add column, where == 1 if mtg prisoner and == 0 if not
+df_all$is_mtgprisoner <- ifelse(paste0(df_all$pidp, df_all$hidp) %in% mtgprisoner_ids, 1, 0)
+
+# Save df
+saveRDS(df_all, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_all_incl_mtgprisoners.rds")
+```

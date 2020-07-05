@@ -1,0 +1,87 @@
+---
+title: "helpers"
+author: "Maria Jose Herrera"
+date: "6/11/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+get_key_indvars <- function(file_name, wave_number){
+  
+  # Load data
+  read_dta(file_name)
+  
+  # Define key vars
+  w_key_indresp <- c( "hidp", "fimnlabnet_dv","hiqual_dv", "jbsoc00_cc",
+                 "jbnssec8_dv", "jbnssec5_dv", "jbnssec3_dv",
+                 "fimnnet_dv","fimnlabnet_dv","sf12mcs_dv",
+                 "sf12pcs_dv", "health", "scghq1_dv",
+                 "scghq2_dv", "country", "gor_dv",
+                 "urban_dv", "age_dv","sex_dv",
+                 "marstat", "jbstat", "nchild_dv",
+                 "sexuor", "jbsemp", "prfitba" ) # vars that have wave prefix
+
+  non_w_indresp <- c("pidp")
+  
+  # Prepare individual variables to pull from full data set
+  wave_alpha <- paste0(letters[wave_number], "_")
+  key_indresp <- paste0(wave_alpha, w_key_indresp) 
+  key_indresp <- append(g_key_indresp, non_w_indresp)
+  df_key_indresp <- select(w7_indresp, one_of(key_indresp))
+  
+  return(df_key_indresp)
+}
+  
+get_key_hhvars <- function(file_name, wave_number){
+  # Load data
+  read_dta(file_name)
+  
+  # Define key vars
+  w_key_hhresp <- c("hidp", "fihhmnnet1_dv","houscost1_dv", "mgtype",
+                     "hscost", "hsval", "hsyr04",
+                     "mglife", "hscost", "mgold",
+                     "houscost1_dv", "houscost2_dv",
+                     "mglife", "xpmg_dv", "xphsdb") # vars that have wave prefix
+  
+  # Prepare household variables to pull from full data set
+  wave_alpha <- paste0(letters[wave_number], "_")
+  key_hhresp <- paste0(wave_alpha, w_key_hhresp)
+  w7_key_hhresp <- select(w7_hhresp, one_of(key_hhresp))
+  return(w7_key_hhresp)
+}
+
+# remove_nas <- function(df_data){
+#     df_clean <- replace_with_na(df_data, replace = list(-21, -20, -11, -10, -9, -8, -7, -2, -1)) # replace "missing values" with NAs
+#     df_clean <- na.omit(df_clean) # omit any rows that are incomplete observations
+#     return(df_clean)
+# }
+
+clean_and_compile <- function(df_hh, df_ind, wave_number){
+  # Clean data by removing NAs
+  df_hh_clean <- replace_with_na(df_hh, replace = list(-21, -20, -11, -10, -9, -8, -7, -2, -1)) # replace "missing values" with NAs
+  df_hh_clean <- na.omit(df_hh_clean) # omit any rows that are incomplete observations
+
+  
+  df_ind_clean <- replace_with_na(df_ind, replace = list(-21, -20, -11, -10, -9, -8, -7, -2, -1)) # replace "missing values" with NAs
+  df_ind_clean <- na.omit(df_ind_clean) # omit any rows that are incomplete observations
+
+    
+  # Combine data frames
+  wave_hidp <- paste0(letters[wave_number], "_hidp")
+  df_combined <- left_join(df_ind_clean, df_hh_clean, by = wave_hidp)
+  return(df_combined)
+}
+
+
+
+
+
+#### WAIT BUT IF I WANT TO ADD ALL OF THE OBSERVATIONS TO 1 DF, I NEED TO GENERALIZE VARIABLE NAMES, NO?
+
+
+```
+
