@@ -1,0 +1,314 @@
+---
+title: "04_HierarchicalClustering"
+author: "Maria Jose Herrera"
+date: "7/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library("tidyverse")  # data manipulation
+library("cluster")    # clustering algorithms
+library("factoextra") # clustering visualization
+library("dendextend") # for comparing two dendrograms
+
+# source: https://uc-r.github.io/hc_clustering
+# source for processing/choosing number of clusters: https://towardsdatascience.com/hierarchical-clustering-on-categorical-data-in-r-a27e578f2995
+```
+
+# Load data
+```{r}
+df_postlegis <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners_postlegis.rds")
+
+df_postlegis$is_mtgprisoner <- NULL
+
+df_prelegis <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners_prelegis.rds")
+
+
+```
+
+# Prepare data
+
+1) Rows are observations (individuals) and columns are variables
+2) Any missing value in the data must be removed or estimated.
+3) The data must be standardized (i.e., scaled) to make variables comparable. Recall that, standardization consists of transforming the variables such that they have mean zero and standard deviation one.[^scale]
+```{r}
+
+
+```
+
+## build dissimilarity matrix using gower for cateogrical variables
+```{r}
+# Categorical
+cat_vars <- c("hsyr04", # year mortgage began
+              "mgtype", # mortgage type
+              "hiqual_dv", #Highest qualification
+              "jbsoc00_cc", # Standard socio-economic classification (SOC 2000) of current job; condensed 3 digit version
+              "jbnssec8_dv", # Current job (eight class ns-sec)
+              "jbnssec5_dv", # Current job (five class ns-sec)
+              "jbnssec3_dv", # Current job (three class ns-sec)
+              "health", # Long-standing illness or disability
+              "country", # Country in the UK
+              "gor_dv", # Region in the UK
+              "urban_dv", # Urban or rural area, derived
+              "sex_dv", # sex, derived
+              "marstat", # Marital status
+              "jbstat", # Employment status
+              "jbsemp", # Employed or self-employed
+              "racel_dv", # Ethnic group (self-reported) (indresp)
+              "ethn_dv", # Ethnic group - derived from multiple sources (indresp)
+  # Need to re-run code to get this var #   "j1soc00_cc", # Standard Socio-economic Classification (SOC 2000) of first job after leaving full-time education. Condensed three-digit version (xwavedat)
+              "maid", # mother's ethnic group (xwavedat)
+              "macob", # mother's country of birth (xwavedat)
+              "maedqf", # mother's educational qualification when respondent was aged 14 (xwavedat)
+              "masoc00_cc", # Standard Occupational Classification 2000 of mother's job when respondent was aged 14 (xwavedat)
+              "paid", # father's ethnic group (xwavedat)
+              "pacob", # father's country of birth (xwavedat)
+              "paedqf", # father's educational qualification when respondent was aged 14 (xwavedat)
+              "pasoc00_cc", # Standard Occupational Classification 2000 of father's job when respondent was aged 14 (xwavedat)
+              "wavenumber") 
+
+df_postlegis[cat_vars] <- lapply(df_postlegis[cat_vars], factor)
+
+gower_dist <- daisy(df_postlegis, metric = c("gower"))
+```
+
+
+
+# Agglomerative clustering (AGNES) - bottom-up
+
+(According to Berkeley source above, good at identifying small clusters)
+
+## hclust()
+
+### No preproccessing
+```{r}
+# Dissimilarity matrix
+d <- dist(df_postlegis, method = "euclidean")
+
+# Hierarchical clustering using Complete Linkage
+hc1 <- hclust(d, method = "complete" )
+
+# Plot the obtained dendrogram
+plot(hc1, cex = 0.6, hang = -1)
+
+
+```
+
+### With processing
+```{r}
+aggl_clust_c <- hclust(gower_dist, method = "complete")
+plot(aggl_clust_c, main = "Agglomerative, complete linkages")
+
+```
+
+```{r}
+# silhouette method
+
+```
+
+
+## agnes()
+```{r}
+# Compute with agnes
+hc2 <- agnes(df_postlegis, method = "complete")
+
+# Agglomerative coefficient
+hc2$ac
+
+
+```
+
+# Divisive clustering (DIANA) - top down
+
+(According to Berkeley source above, good at identifying large clusters)
+```{r}
+divisive.clust <- diana(as.matrix(gower_dist), 
+                  diss = TRUE, keep.diss = TRUE)
+plot(divisive.clust, main = "Divisive")
+
+```
+
+# Stats
+```{r}
+library("fpc")
+
+cstats.table <- function(dist, tree, k) {
+clust.assess <- c("cluster.number","n","within.cluster.ss","average.within","average.between",
+                  "wb.ratio","dunn2","avg.silwidth")
+clust.size <- c("cluster.size")
+stats.names <- c()
+row.clust <- c()
+output.stats <- matrix(ncol = k, nrow = length(clust.assess))
+cluster.sizes <- matrix(ncol = k, nrow = k)
+for(i in c(1:k)){
+  row.clust[i] <- paste("Cluster-", i, " size")
+}
+for(i in c(2:k)){
+  stats.names[i] <- paste("Test", i-1)
+  
+  for(j in seq_along(clust.assess)){
+    output.stats[j, i] <- unlist(cluster.stats(d = dist, clustering = cutree(tree, k = i))[clust.assess])[j]
+    
+  }
+  
+  for(d in 1:k) {
+    cluster.sizes[d, i] <- unlist(cluster.stats(d = dist, clustering = cutree(tree, k = i))[clust.size])[d]
+    dim(cluster.sizes[d, i]) <- c(length(cluster.sizes[i]), 1)
+    cluster.sizes[d, i]
+    
+  }
+}
+output.stats.df <- data.frame(output.stats)
+cluster.sizes <- data.frame(cluster.sizes)
+cluster.sizes[is.na(cluster.sizes)] <- 0
+rows.all <- c(clust.assess, row.clust)
+# rownames(output.stats.df) <- clust.assess
+output <- rbind(output.stats.df, cluster.sizes)[ ,-1]
+colnames(output) <- stats.names[2:k]
+rownames(output) <- rows.all
+is.num <- sapply(output, is.numeric)
+output[is.num] <- lapply(output[is.num], round, 2)
+output
+}
+# I am capping the maximum amout of clusters by 7
+# I want to choose a reasonable number, based on which I will be able to see basic differences between customer groups as a result
+stats.df.divisive <- cstats.table(gower_dist, divisive.clust, 7)
+stats.df.divisive
+
+
+```
+
+# Choosing number of clusters
+```{r}
+# Using "Elbow" and "Silhouette" methods to identify the best number of clusters
+# to better picture the trend, I will go for more than 7 clusters.
+library("ggplot2")
+
+# Elbow
+
+# Divisive clustering
+ggplot(data = data.frame(t(cstats.table(gower_dist, divisive.clust, 15))), 
+  aes(x=cluster.number, y=within.cluster.ss)) + 
+  geom_point()+
+  geom_line()+
+  ggtitle("Divisive clustering") +
+  labs(x = "Num.of clusters", y = "Within clusters sum of squares (SS)") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+# Agglomerative clustering,provides a more ambiguous picture
+ggplot(data = data.frame(t(cstats.table(gower_dist, aggl_clust_c, 15))), 
+  aes(x=cluster.number, y=within.cluster.ss)) + 
+  geom_point()+
+  geom_line()+
+  ggtitle("Agglomerative clustering") +
+  labs(x = "Num.of clusters", y = "Within clusters sum of squares (SS)") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+# Using towards data science method for mixed data types
+```{r}
+# Load useful packages
+library("cluster")
+library("dplyr")
+library("ggplot2")
+library("readr")
+library("Rtsne")
+```
+
+## build dissimilarity matrix using gower for cateogrical variables
+```{r}
+# Categorical
+cat_vars <- c("hsyr04", # year mortgage began
+              "mgtype", # mortgage type
+              "hiqual_dv", #Highest qualification
+              "jbsoc00_cc", # Standard socio-economic classification (SOC 2000) of current job; condensed 3 digit version
+              "jbnssec8_dv", # Current job (eight class ns-sec)
+              "jbnssec5_dv", # Current job (five class ns-sec)
+              "jbnssec3_dv", # Current job (three class ns-sec)
+              "health", # Long-standing illness or disability
+              "country", # Country in the UK
+              "gor_dv", # Region in the UK
+              "urban_dv", # Urban or rural area, derived
+              "sex_dv", # sex, derived
+              "marstat", # Marital status
+              "jbstat", # Employment status
+              "jbsemp", # Employed or self-employed
+              "racel_dv", # Ethnic group (self-reported) (indresp)
+              "ethn_dv", # Ethnic group - derived from multiple sources (indresp)
+  # Need to re-run code to get this var #   "j1soc00_cc", # Standard Socio-economic Classification (SOC 2000) of first job after leaving full-time education. Condensed three-digit version (xwavedat)
+              "maid", # mother's ethnic group (xwavedat)
+              "macob", # mother's country of birth (xwavedat)
+              "maedqf", # mother's educational qualification when respondent was aged 14 (xwavedat)
+              "masoc00_cc", # Standard Occupational Classification 2000 of mother's job when respondent was aged 14 (xwavedat)
+              "paid", # father's ethnic group (xwavedat)
+              "pacob", # father's country of birth (xwavedat)
+              "paedqf", # father's educational qualification when respondent was aged 14 (xwavedat)
+              "pasoc00_cc", # Standard Occupational Classification 2000 of father's job when respondent was aged 14 (xwavedat)
+              "wavenumber") 
+
+df_postlegis[cat_vars] <- lapply(df_postlegis[cat_vars], factor)
+```
+
+
+## Compute Gower distance
+```{r}
+# Move hidp and pidp to front of DF
+df_postlegis <- df_postlegis[c(1,24,2:23,25:48)] # ONLY RUN THIS ONCE OTHERWISE OTHER IS FUCKED
+```
+
+```{r}
+# Compute Gower distance
+gower_dist <- daisy(df_postlegis[3:ncol(df_postlegis)], metric = c("gower")) ## looking only at mortgage prisoners after law was passed; EXCLUDE PIDP AND HIDP (columns 1 and 2)
+
+gower_mat <- as.matrix(gower_dist)
+
+# Print most similar respondents
+df_postlegis[which(gower_mat == min(gower_mat[gower_mat != min(gower_mat)]), arr.ind = TRUE)[1, ], ]
+
+# Print most dissimilar respondents
+df_postlegis[which(gower_mat == max(gower_mat[gower_mat != max(gower_mat)]), arr.ind = TRUE)[1, ], ]
+```
+
+## Silhouette method to find optimal number of clusters
+```{r}
+sil_width <- c(NA)
+for(i in 2:30){  # they limit it to 8 bc of "interpretability" / can look into this -- i put 20 for fun
+  pam_fit <- pam(gower_dist, diss = TRUE, k = i)  
+  sil_width[i] <- pam_fit$silinfo$avg.width  
+}
+plot(1:30, sil_width,
+     xlab = "Number of clusters",
+     ylab = "Silhouette Width")
+lines(1:30, sil_width)
+
+```
+
+## Interpretation
+
+```{r}
+k <- 10 # pick number of clusters based on silhouette
+pam_fit <- pam(gower_dist, diss = TRUE, k)
+pam_results <- df_postlegis[3:ncol(df_postlegis)] %>%
+  mutate(cluster = pam_fit$clustering) %>%
+  group_by(cluster) %>%
+  do(the_summary = summary(.))
+pam_results$the_summary
+
+```
+
+## Visualization in a lower dimensional space
+```{r}
+tsne_obj <- Rtsne(gower_dist, is_distance = TRUE)
+tsne_data <- tsne_obj$Y %>%
+  data.frame() %>%
+  setNames(c("X", "Y")) %>%
+  mutate(cluster = factor(pam_fit$clustering))
+ggplot(aes(x = X, y = Y), data = tsne_data) +
+  geom_point(aes(color = cluster))
+
+```

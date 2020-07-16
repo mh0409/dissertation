@@ -182,3 +182,23 @@ df_all$is_mtgprisoner <- ifelse(paste0(df_all$pidp, df_all$hidp) %in% mtgprisone
 # Save df
 saveRDS(df_all, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_all_incl_mtgprisoners.rds")
 ```
+
+# Mtg prisoners after 2014 (wave 6 - wave 9)
+```{r}
+# Create mtg prisoners df from when legislation was passed (2014) onwards
+df_postlegis <- unique_mtgprisoners[unique_mtgprisoners$wavenumber >= 6, ]
+
+# Save df
+saveRDS(df_postlegis, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners_postlegis.rds")
+
+```
+
+# Mtg prisoners before 2014 (wave 1 - wave 6)
+```{r}
+# Create mtg prisoners df from when legislation was passed (2014) onwards
+df_prelegis <- unique_mtgprisoners[unique_mtgprisoners$wavenumber < 6, ]
+
+# Save df
+saveRDS(df_prelegis, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners_prelegis.rds")
+
+```

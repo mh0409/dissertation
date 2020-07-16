@@ -40,11 +40,11 @@ files <- list(
 
 # Read in data
 data_files <- lapply(files, readRDS)
-
 # Assign names to each (based on order above)
 df_all <- data_files[[1]]
 df_cond1 <- data_files[[2]]
 df_cond2 <- data_files[[3]]
+
 df_cond3_1 <- data_files[[4]]
 df_cond3_2 <- data_files[[5]]
 df_mtgprisoners <- data_files[[6]]
@@ -209,7 +209,7 @@ facet_wrap(~variable, scales = "free")
 
 ```
 
-### Categorical variables
+### Categorical variables - all time
 ```{r}
 df_categorical <- select(df_mtgprisoners, one_of(cat_vars))
 
@@ -232,8 +232,35 @@ ggplot(melt_df_categorical, aes(x = value)) +
 
 ```
 
+### Categorical variables - after legis
+```{r}
+# Load df
+df_post <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners_postlegis.rds")
 
-### Numeric variables
+```
+
+```{r}
+df_categorical_post <- select(df_post, one_of(cat_vars))
+
+# Get frequency
+post_cat_freq <- mapply(table, df_categorical)
+
+# Get percentages
+lapply(post_cat_freq, prop.table)
+
+# Summary tables
+mapply(summary, df_categorical_post)
+
+# Visualizations
+melt_df_categorical_post <- melt(df_categorical_post)
+ggplot(melt_df_categorical_post, aes(x = value)) +
+  geom_bar() +
+  facet_wrap(~variable, scales = "free") +
+  theme_bw()
+
+```
+
+### Numeric variables - all time
 ```{r}
 df_numeric <- select(df_mtgprisoners, one_of(numeric_vars))
 
@@ -251,10 +278,15 @@ mapply(summary, df_numeric)
 # Visualizations
 melt_df_numeric <- melt(df_numeric)
 ggplot(melt_df_numeric, aes(x = value)) +
-  geom_bar() +
+  stat_density() +
   facet_wrap(~variable, scales = "free") +
   theme_bw()
 ```
 
+### Numeric variables - post legis
+```{r}
+
+
+```
 
 
