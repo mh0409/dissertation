@@ -20,6 +20,8 @@ library("dendextend") # for comparing two dendrograms
 ```
 
 # Load data
+Note to sef: the data is only looking at mortgage prisoners after 2014 (when regulation was passed).
+
 ```{r}
 df_postlegis <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners_postlegis.rds")
 
@@ -252,6 +254,7 @@ cat_vars <- c("hsyr04", # year mortgage began
               "wavenumber") 
 
 df_postlegis[cat_vars] <- lapply(df_postlegis[cat_vars], factor)
+
 ```
 
 
@@ -312,3 +315,101 @@ ggplot(aes(x = X, y = Y), data = tsne_data) +
   geom_point(aes(color = cluster))
 
 ```
+
+
+# Hierarchical clustering
+
+## Agglomerative (hclust())
+```{r}
+# Hierarchical clustering using Complete Linkage
+hc_gower <- hclust(gower_dist, method = "complete" )
+
+# Plot the obtained dendrogram
+plot(hc_gower, cex = 0.6, hang = -1)
+
+```
+
+### Agglomerative (agnes() for the agg. coeff)
+```{r}
+# methods to assess
+m <- c( "average", "single", "complete", "ward")
+names(m) <- c( "average", "single", "complete", "ward")
+
+# function to compute coefficient
+ac <- function(x) {
+  agnes(gower_dist, method = x)$ac
+}
+
+map_dbl(m, ac) # ward (minimized within-cluster variance) has highest clustering coeff
+##  average    single  complete      ward 
+## 0.6802216 0.5623316 0.7862307 0.9600270 
+```
+
+### Dendogram of agnes
+Source: https://uc-r.github.io/hc_clustering#optimal
+
+```{r}
+hc_agnes_ward <- agnes(gower_dist, method = "ward")
+pltree(hc_agnes_ward, cex = 0.6, hang = -1, main = "Dendrogram of agnes") 
+
+
+
+```
+
+## Visualizing and adding clusters to data
+
+"The height of the cut to the dendrogram controls the number of clusters obtained. It plays the same role as the k in k-means clustering. In order to identify sub-groups (i.e. clusters), we can cut the dendrogram with cutree."
+
+"We can also use the cutree output to add the the cluster each observation belongs to to our original data."
+
+```{r}
+# Cut tree into 4 groups
+sub_grp <- cutree(as.hclust(hc_agnes_ward), k = 10)
+
+# Number of members in each cluster
+table(sub_grp)
+## sub_grp
+##   1   2   3   4   5   6   7   8   9  10 
+## 125 136  78 111  44  80 119  92 142  82 
+
+clusters_postlegis <- df_postlegis %>%
+  mutate(cluster = sub_grp) %>%
+  head
+
+```
+
+### Entanglement? (tbd?)
+```{r}
+
+
+```
+
+## Choosing the number of clusters
+
+### Elbow method
+```{r}
+# from 'factoextra' package
+fviz_nbclust(gower_mat, FUN = hcut, method = "wss") # wss = total within sum of square
+
+```
+
+### Silhouette method
+```{r}
+# from 'factoextra' package
+fviz_nbclust(gower_mat, FUN = hcut, method = "silhouette") # silhouette = avg silhouette width
+
+
+```
+
+### Gap Statistic Method
+```{r}
+gap_stat <- clusGap(gower_mat, FUN = hcut, nstart = 25, K.max = 10, B = 50)
+fviz_gap_stat(gap_stat)
+
+
+```
+
+
+
+
+
