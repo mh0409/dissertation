@@ -131,10 +131,15 @@ fold_errors
 
 ```
 
-## Predicting classes
+## Predicting classes (using test set!)
+Source: http://www.sthda.com/english/articles/36-classification-methods-essentials/151-logistic-regression-essentials-in-r/#interpretation
 ```{r}
 probabilities <- predict.glm(mod, test_set, type = "response")
-predicted_classes <- ifelse(probabilities > 0.5, "mtg_prisoner", "not_mtg_prisoner")
+predicted_classes <- ifelse(probabilities > 0.5, "1", "0")
+table(predicted_classes)
+
+# Accuracy
+mean(predicted_classes == test_set$is_mtgprisoner, na.rm = TRUE)
 
 ```
 
@@ -148,4 +153,7 @@ summary(glm_fit)
 
 # Possible downfalls
 * Look out for collinearity, large standard errors
-## Collinearity
+* Confounding variables (Interaction terms?)
+
+# Assumptions and diagnostics to do!
+Source: http://www.sthda.com/english/articles/36-classification-methods-essentials/148-logistic-regression-assumptions-and-diagnostics-in-r/
