@@ -113,9 +113,13 @@ clean_and_compile <- function(df_hh, df_ind, df_xwave, wave_number){
   # df_ind_clean <- na.omit(df_ind_clean) # omit any rows that are incomplete observations
   
   
-  # Combine data frames
+  # Combine indresp and hhresp data frames
   wave_hidp <- paste0(letters[wave_number], "_hidp")
-  df_combined <- merge(x = df_ind_clean, y = df_hh_clean, by = wave_hidp, all = TRUE )
+  df_combined <- merge(x = df_ind_clean, y = df_hh_clean, by.x = wave_hidp, by.y = wave_hidp, all = TRUE )
+  
+  # Combine with xwave df
+  wave_pidp <- paste0(letters[wave_number], "_pidp") 
+  df_combined < merge(x = df_combined, y = df_xwave_clean, by.x = wave_pidp, by.y = wave_pidp, all = TRUE)
   df_combined$wavenumber <- wave_number
 
   return(df_combined)

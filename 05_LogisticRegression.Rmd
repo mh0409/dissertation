@@ -9,6 +9,12 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r}
+library("tidyverse")
+
+```
+
+
 # Load data
 
 ```{r}
@@ -31,7 +37,7 @@ cat_vars <- c("hsyr04", # year mortgage began
               "jbstat", # Employment status
               "jbsemp", # Employed or self-employed
               "racel_dv", # Ethnic group (self-reported) (indresp)
-              "ethn_dv", # Ethnic group - derived from multiple sources (indresp)
+              #  "ethn_dv", # Ethnic group - derived from multiple sources (indresp)
   # Need to re-run code to get this var #   "j1soc00_cc", # Standard Socio-economic Classification (SOC 2000) of first job after leaving full-time education. Condensed three-digit version (xwavedat)
               "maid", # mother's ethnic group (xwavedat)
               "macob", # mother's country of birth (xwavedat)
@@ -40,10 +46,10 @@ cat_vars <- c("hsyr04", # year mortgage began
               "paid", # father's ethnic group (xwavedat)
               "pacob", # father's country of birth (xwavedat)
               "paedqf", # father's educational qualification when respondent was aged 14 (xwavedat)
-              "pasoc00_cc", # Standard Occupational Classification 2000 of father's job when respondent was aged 14 (xwavedat)
-              "wavenumber") 
+              "pasoc00_cc") # Standard Occupational Classification 2000 of father's job when respondent was aged 14 (xwavedat)
 
-df_postlegis[cat_vars] <- lapply(df_postlegis[cat_vars], factor)
+df_all[cat_vars] <- lapply(df_all[cat_vars], factor)
+df_all_post <- df_all[df_all$wavenumber >= 6, ]
 
 
 ```
@@ -51,14 +57,88 @@ df_postlegis[cat_vars] <- lapply(df_postlegis[cat_vars], factor)
 # Select vars for model
 
 * Locality - country ("country"), region in UK ("gor_dv"), urban or rural ("urban_dv")
-* Individual - race ("racel_dv"), ethnic group ("ethn_dv"), sex ("sex_dv"), employment status ("jbstat"), marital status ("marstat")
+* Individual - race ("racel_dv"), sex ("sex_dv"), employment status ("jbstat"), marital status ("marstat")
 * Money/costs - total monthly income ("fihhmnnet1_dv"), monthly housing cost including mtg principal payment ("houscost1_dv")
 * Other - household size ("hhsize")
 
 ```{r}
-vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_dv", "ethn_dv", "sex_dv", "jbstat", "marstat", "fihhmnnet1_dv", "houscost1_dv", "hhsize")
+vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_dv", "sex_dv", "jbstat", "marstat", "fihhmnnet1_dv", "houscost1_dv", "is_mtgprisoner") #, "hhsize") # to do once i re-download all data w/ "hhsize"
 
-df_interest <- select(df_post, one_of(vars_of_interest))
+df_interest <- select(df_all_post, one_of(vars_of_interest))
 
 ```
 
+
+# Build model
+* Dependent variable: mortgage prisoner status
+
+```{r}
+require("ISLR")
+```
+## Training and testing sets
+```{r}
+# Get integer corresponding to % of data to use for testing
+pct_test <- 0.10
+N <- floor(pct_test * nrow(df_interest))
+
+# Randomly sample N indices corresponding to rows in data
+test_rows <- sample(1:nrow(df_interest), N)
+
+# Subset by row index; will split into independent and dependent later
+train_set <- df_interest[-test_rows, ]
+test_set <- df_interest[test_rows, ]
+
+# Drop unused factors by running factor() again on cat vars
+interest_cat_vars <- intersect(cat_vars, vars_of_interest) # get vars of interest that are categorical
+
+df_interest[interest_cat_vars] <- factor(replace(df_interest[interest_cat_vars], df_interest[interest_cat_vars] == "NA", NA))
+
+train_set$marstat <- fct_drop(train_set$marstat)
+train_set$jbstat <- fct_drop(train_set$jbstat)
+
+test_set$marstat <- fct_drop(test_set$marstat)
+test_set$jbstat <- fct_drop(test_set$jbstat)
+
+```
+
+## 10-fold CV
+```{r}
+# Shuffle train set df
+set.seed(1)
+rows <- sample(1:nrow(train_set), nrow(train_set))
+train_set <- train_set[rows, ]
+
+# Number of elements for each fold
+N <- floor((1/10) * nrow(train_set))
+
+fold_errors <- numeric(10)
+
+for (i in 1:10) {
+  if (i < 10){
+    val_idx <- ((N * (i - 1) + 1):(N * i))
+  }
+else {
+  val_idx <- ((N * (i - 1) + 1):nrow(train_set))
+}
+  val <- train_set[val_idx, ]
+  train <- train_set[-val_idx, ]
+  
+  mod <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_dv + sex_dv + jbstat + marstat + fihhmnnet1_dv + houscost1_dv, data = train, family = binomial)
+  fold_errors[i] <- mean((predict(mod, val) - val$is_mtgprisoner)^2)
+}
+
+fold_errors
+
+```
+
+## Model
+```{r}
+glm_fit <- glm(is_mtgprisoner ~ country + gor_dv + urban_dv + racel_dv + sex_dv + jbstat + marstat + fihhmnnet1_dv + houscost1_dv, data = df_all, family = binomial)
+
+summary(glm_fit)
+
+```
+
+# Possible downfalls
+* Look out for collinearity, large standard errors
+## Collinearity

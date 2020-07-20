@@ -56,10 +56,72 @@ df_all <- df_all[!is.na(df_all$mgtype),]
 # Add in only necessary xwave data for pidp
 df_all <- left_join(x = df_all, y = data_files[[10]], by = "pidp")
 
+
+```
+
+# Re-categorise vars
+## jbstat
+```{r}
+df_all <- df_all %>%
+    mutate(jbstat_recat = case_when(jbstat == 1 ~ 'self-employed',
+                                  jbstat == 2 ~ 'employed',
+                                  jbstat == 3 ~ 'unemployed',
+                                  jbstat == 4 ~ 'not seeking work',
+                                  jbstat == 5 ~ 'maternity leave',
+                                  jbstat == 6 ~ 'not seeking work',
+                                  jbstat == 7 ~ 'not seeking work',
+                                  jbstat == 8 ~ 'LT sick/disabled',
+                                  jbstat == 9 ~ 'not seeking work',
+                                  jbstat == 10 ~ 'employed',
+                                  jbstat == 11 ~ 'employed',
+                                  TRUE ~ 'Something else'))
+```
+
+## marstat
+```{r}
+df_all <- df_all %>%
+  mutate(marstat_recat = case_when(marstat == 1 ~ 'never married',
+                                   marstat == 2 ~ 'married/civil partner',
+                                   marstat == 3 ~ 'married/civil partner',
+                                   marstat == 4 ~ 'separated',
+                                   marstat == 5 ~ 'divorced/dissolved',
+                                   marstat == 6 ~ 'widowed/surviving partner',
+                                   marstat == 7 ~ 'separated',
+                                   marstat == 8 ~ 'divorced/dissolved',
+                                   marstat == 9 ~ 'widowed/surviving partner',
+                                   TRUE ~ 'something else'))
+
+```
+
+## racel_dv
+```{r}
+df_all <- df_all %>%
+  mutate(racel_recat = case_when(racel_dv == 1 ~ 'white',
+                                   racel_dv == 2 ~ 'white',
+                                   racel_dv == 3 ~ 'white',
+                                   racel_dv == 4 ~ 'white',
+                                   racel_dv == 5 ~ 'mixed',
+                                   racel_dv == 6 ~ 'mixed',
+                                   racel_dv == 7 ~ 'mixed',
+                                   racel_dv == 8 ~ 'mixed',
+                                   racel_dv == 9 ~ 'asian/asian british',
+                                   racel_dv == 10 ~ 'asian/asian british',
+                                   racel_dv == 11 ~ 'asian/asian british',
+                                   racel_dv == 12 ~ 'asian/asian british',
+                                   racel_dv == 13 ~ 'asian/asian british',
+                                   racel_dv == 14 ~ 'black/black british',
+                                   racel_dv == 15 ~ 'black/black british',
+                                   racel_dv == 16 ~ 'black/black british',
+                                   racel_dv == 17 ~ 'other ethnic group',
+                                   TRUE ~ 'other ethnic group'))
+
+```
+
+
+# Save df
+```{r}
 # Save all mortgage owners
 saveRDS(df_all, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_allmtgs.rds")
-
-
 
 ```
 
@@ -202,3 +264,4 @@ df_prelegis <- unique_mtgprisoners[unique_mtgprisoners$wavenumber < 6, ]
 saveRDS(df_prelegis, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners_prelegis.rds")
 
 ```
+
