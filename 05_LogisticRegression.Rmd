@@ -62,7 +62,7 @@ df_all_post <- df_all[df_all$wavenumber >= 6, ]
 * Other - household size ("hhsize")
 
 ```{r}
-vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_dv", "sex_dv", "jbstat", "marstat", "fihhmnnet1_dv", "houscost1_dv", "is_mtgprisoner") #, "hhsize") # to do once i re-download all data w/ "hhsize"
+vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_recat", "sex_dv", "jbstat_recat", "marstat_recat", "fihhmnnet1_dv", "houscost1_dv", "is_mtgprisoner") #, "hhsize") # to do once i re-download all data w/ "hhsize"
 
 df_interest <- select(df_all_post, one_of(vars_of_interest))
 
@@ -93,11 +93,11 @@ interest_cat_vars <- intersect(cat_vars, vars_of_interest) # get vars of interes
 
 df_interest[interest_cat_vars] <- factor(replace(df_interest[interest_cat_vars], df_interest[interest_cat_vars] == "NA", NA))
 
-train_set$marstat <- fct_drop(train_set$marstat)
-train_set$jbstat <- fct_drop(train_set$jbstat)
-
-test_set$marstat <- fct_drop(test_set$marstat)
-test_set$jbstat <- fct_drop(test_set$jbstat)
+# train_set$marstat <- fct_drop(train_set$marstat) ## not using these vars anymore -- replaced with marstat_recat
+# train_set$jbstat <- fct_drop(train_set$jbstat)
+# 
+# test_set$marstat <- fct_drop(test_set$marstat)
+# test_set$jbstat <- fct_drop(test_set$jbstat)
 
 ```
 
@@ -123,17 +123,24 @@ else {
   val <- train_set[val_idx, ]
   train <- train_set[-val_idx, ]
   
-  mod <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_dv + sex_dv + jbstat + marstat + fihhmnnet1_dv + houscost1_dv, data = train, family = binomial)
-  fold_errors[i] <- mean((predict(mod, val) - val$is_mtgprisoner)^2)
+  mod <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + jbstat_recat + marstat_recat + fihhmnnet1_dv + houscost1_dv, data = train_set, family = binomial)
+  fold_errors[i] <- mean((predict.glm(mod, val, type = "response") - val$is_mtgprisoner)^2, na.rm = TRUE) ## WHY WAS I GETTING SO MANY NA's?
 }
 
 fold_errors
 
 ```
 
+## Predicting classes
+```{r}
+probabilities <- predict.glm(mod, test_set, type = "response")
+predicted_classes <- ifelse(probabilities > 0.5, "mtg_prisoner", "not_mtg_prisoner")
+
+```
+
 ## Model
 ```{r}
-glm_fit <- glm(is_mtgprisoner ~ country + gor_dv + urban_dv + racel_dv + sex_dv + jbstat + marstat + fihhmnnet1_dv + houscost1_dv, data = df_all, family = binomial)
+glm_fit <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + jbstat_recat + marstat_recat + fihhmnnet1_dv + houscost1_dv, data = df_all, family = binomial)
 
 summary(glm_fit)
 

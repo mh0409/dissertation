@@ -75,6 +75,12 @@ df_all <- df_all %>%
                                   jbstat == 10 ~ 'employed',
                                   jbstat == 11 ~ 'employed',
                                   TRUE ~ 'Something else'))
+
+# Make reference employed people
+df_all$jbstat_recat <- as.factor(df_all$jbstat_recat)
+df_all <- within(df_all, jbstat_recat <- relevel(jbstat_recat, ref = 'employed'))
+
+
 ```
 
 ## marstat
@@ -90,6 +96,12 @@ df_all <- df_all %>%
                                    marstat == 8 ~ 'divorced/dissolved',
                                    marstat == 9 ~ 'widowed/surviving partner',
                                    TRUE ~ 'something else'))
+
+# Make reference single people
+df_all$marstat_recat <- as.factor(df_all$marstat_recat)
+df_all <- within(df_all, marstat_recat <- relevel(marstat_recat, ref = 'never married'))
+
+
 
 ```
 
@@ -114,6 +126,11 @@ df_all <- df_all %>%
                                    racel_dv == 16 ~ 'black/black british',
                                    racel_dv == 17 ~ 'other ethnic group',
                                    TRUE ~ 'other ethnic group'))
+
+# Make reference white people
+df_all$racel_recat <- as.factor(df_all$racel_recat)
+df_all <- within(df_all, racel_recat <- relevel(racel_recat, ref = 'white'))
+
 
 ```
 
