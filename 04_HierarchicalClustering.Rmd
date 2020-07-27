@@ -30,6 +30,8 @@ df_postlegis$is_mtgprisoner <- NULL
 df_prelegis <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners_prelegis.rds")
 
 
+
+
 ```
 
 # Prepare data
@@ -73,9 +75,18 @@ cat_vars <- c("hsyr04", # year mortgage began
               "pasoc00_cc", # Standard Occupational Classification 2000 of father's job when respondent was aged 14 (xwavedat)
               "wavenumber") 
 
+vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_recat", "sex_dv", "marstat_recat", "fihhmnnet1_dv", "houscost1_dv", "is_mtgprisoner", "wavenumber", "pidp", "age_dv") #, "hhsize") # to do once i re-download all data w/ "hhsize"
+
+df_interest <- select(df_all_post, one_of(vars_of_interest))
+df_interest$sex_dv <- as.factor(df_interest$sex_dv)
+
+
 df_postlegis[cat_vars] <- lapply(df_postlegis[cat_vars], factor)
 
-gower_dist <- daisy(df_postlegis, metric = c("gower"))
+# gower_dist <- daisy(df_postlegis, metric = c("gower"))  ### old
+
+gower_dist <- daisy(df_interest, metric = c("gower")) # new -- using only vars of interests
+
 ```
 
 
@@ -345,13 +356,52 @@ map_dbl(m, ac) # ward (minimized within-cluster variance) has highest clustering
 ## 0.6802216 0.5623316 0.7862307 0.9600270 
 ```
 
-### Dendogram of agnes
+### Dendogram of agnes -- USE THIS ONE
 Source: https://uc-r.github.io/hc_clustering#optimal
 
 ```{r}
 hc_agnes_ward <- agnes(gower_dist, method = "ward")
 pltree(hc_agnes_ward, cex = 0.6, hang = -1, main = "Dendrogram of agnes") 
 
+
+
+```
+
+
+
+### Entanglement? (tbd?)
+```{r}
+
+
+```
+
+## Choosing the number of clusters
+
+### Elbow method
+```{r}
+gower_mat <- as.matrix(gower_dist)
+
+# from 'factoextra' package
+fviz_nbclust(gower_mat, FUN = hcut, method = "wss") # wss = total within sum of square
+
+```
+
+### Silhouette method
+```{r}
+gower_mat <- as.matrix(gower_dist)
+
+# from 'factoextra' package
+fviz_nbclust(gower_mat, FUN = hcut, method = "silhouette") # silhouette = avg silhouette width
+
+
+```
+
+### Gap Statistic Method
+```{r}
+gower_mat <- as.matrix(gower_dist)
+
+gap_stat <- clusGap(gower_mat, FUN = hcut, nstart = 25, K.max = 10, B = 10)
+fviz_gap_stat(gap_stat)
 
 
 ```
@@ -364,52 +414,78 @@ pltree(hc_agnes_ward, cex = 0.6, hang = -1, main = "Dendrogram of agnes")
 
 ```{r}
 # Cut tree into 4 groups
-sub_grp <- cutree(as.hclust(hc_agnes_ward), k = 10)
+sub_grp <- cutree(as.hclust(hc_agnes_ward), k = 4)
 
 # Number of members in each cluster
 table(sub_grp)
 ## sub_grp
-##   1   2   3   4   5   6   7   8   9  10 
-## 125 136  78 111  44  80 119  92 142  82 
+##  1   2   3   4 
+## 223 188 365 233 
 
-clusters_postlegis <- df_postlegis %>%
-  mutate(cluster = sub_grp) %>%
-  head
+clusters_postlegis <- df_postlegis
+clusters_postlegis$cluster <- sub_grp
 
 ```
 
-### Entanglement? (tbd?)
+## IMPUTE DATA?? USE MEDIAN OR AVERAGE
 ```{r}
 
-
 ```
 
-## Choosing the number of clusters
+## Characterising each cluster
+sources: https://medium.com/@vieille.francois/compare-clusters-with-comparegroups-package-in-r-4cac20a0c00e
 
-### Elbow method
+
 ```{r}
-# from 'factoextra' package
-fviz_nbclust(gower_mat, FUN = hcut, method = "wss") # wss = total within sum of square
+library("compareGroups")
+library("xml2")
+library("htmltools")
+library("knitr")
+library("kableExtra")
+library("ggplot2")
+library("data.table")
+
+variables <- colnames(clusters_postlegis)
+variables_and_cluster = c("cluster", variables)
+
+comparegroups.main <- compareGroups(
+  formula          = cluster ~ .,
+  data             = iris.x[, ..VARIABLES_AND_CLUSTER]
+)
+comparegroups.main
+
+
+# mode function
+Modes <- function(x) {
+  ux <- unique(x)
+  tab <- tabulate(match(x, ux))
+  ux[tab == max(tab)]
+}
+
+
+for(i in 1:4){
+print(summary(clusters_postlegis[clusters_postlegis$cluster == i,]))
+}
+
+
 
 ```
 
-### Silhouette method
+### Comparing each cluster
+
 ```{r}
-# from 'factoextra' package
-fviz_nbclust(gower_mat, FUN = hcut, method = "silhouette") # silhouette = avg silhouette width
+## Summarizing numeric
+clusters_postlegis%>%
+  group_by(cluster) %>%
+  summarise_if(is.numeric, median, na.rm = TRUE)
+
+
+## Summarizing categorical data
+factor_cols <- colnames(clusters_postlegis[,sapply(clusters_postlegis, is.factor) & colnames(clusters_postlegis) != c("pidp", "hidp")])
+
+cat_data <- clusters_postlegis[, factor_cols]
+apply(cat_data, 2, table)
 
 
 ```
-
-### Gap Statistic Method
-```{r}
-gap_stat <- clusGap(gower_mat, FUN = hcut, nstart = 25, K.max = 10, B = 50)
-fviz_gap_stat(gap_stat)
-
-
-```
-
-
-
-
 

@@ -33,7 +33,8 @@ get_key_indvars <- function(file_path, wave_number){
                       "jbsemp",
                       "prfitba",
                       "racel_dv",
-                      "ethn_dv") # vars that have wave prefix
+                      "ethn_dv",
+                      "fimngrs_dv") # vars that have wave prefix
   
   non_w_indresp <- c("pidp")
   

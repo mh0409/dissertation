@@ -1,0 +1,137 @@
+---
+title: "Untitled"
+author: "Maria Jose Herrera"
+date: "7/25/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r cars}
+
+df_all <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_all_incl_mtgprisoners.rds")
+
+# Categorical
+cat_vars <- c("hsyr04", # year mortgage began
+              "mgtype", # mortgage type
+              "hiqual_dv", #Highest qualification
+              "jbsoc00_cc", # Standard socio-economic classification (SOC 2000) of current job; condensed 3 digit version
+              "jbnssec8_dv", # Current job (eight class ns-sec)
+              "jbnssec5_dv", # Current job (five class ns-sec)
+              "jbnssec3_dv", # Current job (three class ns-sec)
+              "health", # Long-standing illness or disability
+              "country", # Country in the UK
+              "gor_dv", # Region in the UK
+              "urban_dv", # Urban or rural area, derived
+              "sex_dv", # sex, derived
+              "marstat", # Marital status
+              "jbstat", # Employment status
+              "jbsemp", # Employed or self-employed
+              "racel_dv", # Ethnic group (self-reported) (indresp)
+              #  "ethn_dv", # Ethnic group - derived from multiple sources (indresp)
+  # Need to re-run code to get this var #   "j1soc00_cc", # Standard Socio-economic Classification (SOC 2000) of first job after leaving full-time education. Condensed three-digit version (xwavedat)
+              "maid", # mother's ethnic group (xwavedat)
+              "macob", # mother's country of birth (xwavedat)
+              "maedqf", # mother's educational qualification when respondent was aged 14 (xwavedat)
+              "masoc00_cc", # Standard Occupational Classification 2000 of mother's job when respondent was aged 14 (xwavedat)
+              "paid", # father's ethnic group (xwavedat)
+              "pacob", # father's country of birth (xwavedat)
+              "paedqf", # father's educational qualification when respondent was aged 14 (xwavedat)
+              "pasoc00_cc") # Standard Occupational Classification 2000 of father's job when respondent was aged 14 (xwavedat)
+
+df_all[cat_vars] <- lapply(df_all[cat_vars], factor)
+
+# test <- df_all
+# test$wavenumber <- as.numeric(df_all$wavenumber)
+# test$post_legis <- ifelse(df_all$wavenumber >= 6, 1, 0)
+# test$post_legis <- as.factor(test$post_legis)
+# 
+# 
+# test$sex_dv[df_all_post$sex_dv == 0] <- NA
+# test$wavenumber <- as.factor(test$wavenumber)
+
+df_all[cat_vars] <- lapply(df_all[cat_vars], factor)
+df_all_post <- df_all[df_all$wavenumber >= 6, ]
+df_all$wavenumber <- as.factor(df_all$wavenumber)
+df_all_post$wavenumber <- as.factor(df_all_post$wavenumber)
+df_all_post$sex_dv[df_all_post$sex_dv == 0] <- NA
+
+```
+
+# Select vars for model
+
+* Locality - country ("country"), region in UK ("gor_dv"), urban or rural ("urban_dv")
+* Individual - race ("racel_dv"), sex ("sex_dv"), employment status ("jbstat"), marital status ("marstat")
+* Money/costs - total monthly income ("fihhmnnet1_dv"), monthly housing cost including mtg principal payment ("houscost1_dv")
+* Other - household size ("hhsize")
+
+```{r}
+vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_recat", "sex_dv", "marstat_recat", "fihhmnnet1_dv", "houscost1_dv", "is_mtgprisoner", "wavenumber", "pidp", "age_dv", "hiqual_dv", "hsyr04","hscost" ) #, "fimngrs_dv", hhsize") # to do once i re-download all data w/ "hhsize"
+
+df_interest <- select(df_all_post, one_of(vars_of_interest))
+df_interest$sex_dv <- as.factor(df_interest$sex_dv)
+
+df_interest_complete <- df_interest[complete.cases(df_interest) == TRUE, ]
+df_interest_complete$is_mtgprisoner <- as.factor(df_interest_complete$is_mtgprisoner)
+
+unique(df_interest_complete$hsyr04) # no NA data in df_interest_complete
+df_interest_complete <- droplevels(df_interest_complete)
+
+```
+
+
+# log Reg Model
+```{r}
+glm <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + poly(age_dv, 2) + hiqual_dv + wavenumber, data = df_interest_complete, family = binomial)
+
+summary(glm)
+exp(glm$coefficients)
+```
+
+## Robustness: hsyr_04
+
+### Model
+```{r}
+hsyr_glm <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + poly(age_dv, 2) + hiqual_dv + wavenumber + hsyr04, data = df_interest_complete, family = binomial)
+
+summary(hsyr_glm)
+exp(hsyr_glm$coefficients)
+
+## Group them, then run model again (pre-crisis, during crisis, post-legis)
+df_robust <- df_interest_complete 
+df_robust$hsyr04 <- as.numeric(levels(df_robust$hsyr04))[df_robust$hsyr04]
+df_robust$hsyr_group <- ifelse(df_robust$hsyr04 < 2006, 1,
+                           ifelse(df_robust$hsyr04 >= 2006 & df_robust$hsyr04 < 2014, 2, 
+                           ifelse(df_robust$hsyr04 >= 2014, 3, 0)))
+df_robust$hsyr_group <- as.factor(df_robust$hsyr_group)
+
+hsyr_glm2 <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + poly(age_dv, 2) + hiqual_dv + wavenumber + hsyr_group, data = df_robust, family = binomial)
+
+summary(hsyr_glm2)
+
+```
+
+`
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,324 @@
+---
+title: "07_CleanModel_Clustering"
+author: "Maria Jose Herrera"
+date: "7/26/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Clustering model
+
+# Load data
+Note to sef: the data is only looking at mortgage prisoners after 2014 (when regulation was passed).
+
+```{r}
+df_postlegis <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners_postlegis.rds")
+# df_prelegis <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners_prelegis.rds") # don't need for now
+
+```
+
+# Prepare data
+
+1) Rows are observations (individuals) and columns are variables
+2) Any missing value in the data must be removed or estimated.
+3) The data must be standardized (i.e., scaled) to make variables comparable. Recall that, standardization consists of transforming the variables such that they have mean zero and standard deviation one.[^scale]
+
+```{r}
+library("dplyr")
+
+# Categorical
+cat_vars <- c("hsyr04", # year mortgage began
+              "mgtype", # mortgage type
+              "hiqual_dv", #Highest qualification
+              "jbsoc00_cc", # Standard socio-economic classification (SOC 2000) of current job; condensed 3 digit version
+              "jbnssec8_dv", # Current job (eight class ns-sec)
+              "jbnssec5_dv", # Current job (five class ns-sec)
+              "jbnssec3_dv", # Current job (three class ns-sec)
+              "health", # Long-standing illness or disability
+              "country", # Country in the UK
+              "gor_dv", # Region in the UK
+              "urban_dv", # Urban or rural area, derived
+              "sex_dv", # sex, derived
+              "marstat", # Marital status
+              "jbstat", # Employment status
+              "jbsemp", # Employed or self-employed
+              "racel_dv", # Ethnic group (self-reported) (indresp)
+              "ethn_dv", # Ethnic group - derived from multiple sources (indresp)
+  # Need to re-run code to get this var #   "j1soc00_cc", # Standard Socio-economic Classification (SOC 2000) of first job after leaving full-time education. Condensed three-digit version (xwavedat)
+              "maid", # mother's ethnic group (xwavedat)
+              "macob", # mother's country of birth (xwavedat)
+              "maedqf", # mother's educational qualification when respondent was aged 14 (xwavedat)
+              "masoc00_cc", # Standard Occupational Classification 2000 of mother's job when respondent was aged 14 (xwavedat)
+              "paid", # father's ethnic group (xwavedat)
+              "pacob", # father's country of birth (xwavedat)
+              "paedqf", # father's educational qualification when respondent was aged 14 (xwavedat)
+              "pasoc00_cc", # Standard Occupational Classification 2000 of father's job when respondent was aged 14 (xwavedat)
+              "wavenumber") 
+
+
+# Make sure vars are right data type
+df_postlegis[cat_vars] <- lapply(df_postlegis[cat_vars], as.factor)
+df_postlegis$wavenumber <- as.factor(df_postlegis$wavenumber)
+df_postlegis$sex_dv[df_postlegis$sex_dv == 0] <- NA
+df_postlegis$sex_dv <- as.factor(df_postlegis$sex_dv)
+df_postlegis$is_mtgprisoner <- as.factor(df_postlegis$is_mtgprisoner)
+
+# Define variables of interest
+vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_recat", "sex_dv", "marstat_recat", "fihhmnnet1_dv", "houscost1_dv", "is_mtgprisoner", "wavenumber", "pidp", "age_dv", "hiqual_dv", "hsyr04","hscost") #, "fimngrs_dv", hhsize") # to do once i re-download all data w/ "hhsize"
+
+df_interest <- select(df_postlegis, one_of(vars_of_interest)) # create df
+
+# Keep only complete observations
+df_interest_complete <- df_interest[complete.cases(df_interest) == TRUE, ]
+# unique(df_interest_complete$hsyr04) # no NA data in df_interest_complete
+# df_interest_complete <- droplevels(df_interest_complete)
+
+summary(df_interest_complete)
+```
+
+## One-hot encoding (dummy vars) + scale
+```{r}
+library("caret")
+
+# dummify the data (make categorical variables into many numeric variables)
+dmy <- dummyVars(" ~ .", data = df_clustervars, fullRank = TRUE)
+df_dummy <- data.frame(predict(dmy, newdata = df_clustervars))
+df_dum_scaled <- scale(df_dummy)
+
+summary(df_dummy)
+```
+## PCA
+
+```{r}
+library("PCAmixdata")
+
+split <- splitmix(df_postlegis[, -52]) # split into quant and qual variables; omit is_mtgprisoner
+X1 <- split$X.quanti 
+X2 <- split$X.quali 
+res.pcamix <- PCAmix(X.quanti=X1, X.quali=X2,rename.level=TRUE,
+                     graph=FALSE)
+
+res.pcamix$eig
+
+
+```
+
+# Dissmilarity matrix
+
+## Gower
+```{r}
+library("cluster")
+
+df_clustervars <- df_interest_complete[, !names(df_interest_complete) %in% c("is_mtgprisoner", "country", "pidp", "fihhmnet1_dv", "houscost1_dv")]
+
+# Build dissimilarity matrix using gower distribution
+gower_dist <- daisy(df_clustervars, metric = c("gower")) # using only vars of interests used in log reg
+
+gower_mat <- as.matrix(gower_dist)
+
+gower_asdist <- as.dist(gower_dist)
+
+
+
+```
+
+## Manhattan
+* Using df_dum_scaled (one-hot encoding of all categorical vars)
+```{r}
+onehot_dist <- stats::dist(df_dum_scaled, method = "manhattan")
+
+```
+
+# Hierarchical clustering
+```{r}
+library("factoextra")
+library("ggplot2")
+library("purrr")
+```
+
+### Validate dendogram using cophenetic coefficient
+```{r}
+# Compute cophentic distance
+res.coph <- cophenetic(as.hclust(hc_agnes_ward))
+
+# Correlation between cophenetic distance and
+# the original distance
+cor(gower_asdist, res.coph)
+
+# Compare w/ Single
+res.hc2 <- hclust(as.dist(gower_dist), method = "average")
+
+cor(as.dist(gower_dist), cophenetic(res.hc2))
+
+# Compare w/ Average
+res.hc3 <- hclust(as.dist(gower_dist), method = "single")
+
+cor(as.dist(gower_dist), cophenetic(res.hc3))
+
+# methods to assess
+m <- c("average", "single", "complete", "weighted")
+names(m) <- c("average", "single", "complete", "weighted")
+
+# function to compute coefficient
+gower_coph_cor <- function(x) {
+  # res.hc3 <- hclust(as.dist(gower_dist), method = x)
+  res.hc3 <- as.hclust(agnes(gower_dist, diss = TRUE, method = x))
+  cor(as.dist(gower_dist), cophenetic(res.hc3))
+}
+
+map_dbl(m, coph_cor)
+## average    single  complete  weighted 
+## 0.5039878 0.2905799 0.4117255 0.4031402
+
+
+# function to compute coefficient
+manhattan_coph_cor <- function(x) {
+  res.hc3 <- as.hclust(agnes(onehot_dist, diss = TRUE, method = x))
+  cor(as.dist(gower_dist), cophenetic(res.hc3))
+}
+
+map_dbl(m, manhattan_coph_cor) 
+## REALLY BAD RESULTS -- YIKES
+##  average    single  complete  weighted 
+## 0.2340356 0.1920028 0.2089606 0.2007872 
+
+```
+
+## Agglomerative (agnes)
+```{r}
+set.seed(1) 
+
+# methods to assess
+m <- c( "average", "single", "complete", "ward")
+names(m) <- c( "average", "single", "complete", "ward")
+
+# function to compute coefficient
+ac <- function(x) {
+  agnes(gower_dist, method = x)$ac
+}
+
+map_dbl(m, ac) # ward (minimized within-cluster variance) has highest clustering coeff
+#   average    single  complete      ward 
+# 0.7445483 0.5581591 0.8262258 0.9678453 
+```
+
+### Dendogram of agnes -- USE THIS ONE
+Source: https://uc-r.github.io/hc_clustering#optimal
+
+```{r}
+hc_agnes_ward <- agnes(gower_dist, diss = TRUE, method = "complete")
+pltree(hc_agnes_ward, cex = 0.6, hang = -1, main = "Dendrogram of agnes") 
+
+agnes_as_hclust <- as.hclust(hc_agnes_ward)
+
+```
+
+## Agglomerative (hclust) -- USE THIS ACTUALLY
+```{r}
+# agg_hclust <- hclust(gower_asdist, method = "complete") ## NOT USING THIS ONE BC BAD RESULTS VS AGNES()
+
+agnes_nbclust <- NbClust(diss =  gower_asdist,
+        distance = NULL,
+        method =  "complete",
+        index = "silhouette")
+agnes_nbclust$Best.nc
+agnes_nbclust$Best.partition
+# Result from "average" says to cluster into 2 groups BUT 1 OF 829 AND 1 OF 1 -- THIS IS JUST WRONG
+
+# Cut tree into 2 groups
+sub_grp2 <- cutree(as.hclust(hc_agnes_ward), k = 2)
+
+# Number of members in each cluster
+table(sub_grp2)
+## sub_grp
+sub_grp2
+##  1   2 
+## 614 216 
+
+
+plot(agg_hclust, hang = -1) # from plot cut into 4?
+
+# Cut tree into 4 groups
+sub_grp4 <- cutree(as.hclust(hc_agnes_ward), k = 4)
+
+# Number of members in each cluster
+table(sub_grp4)
+## sub_grp
+##  1   2   3   4 
+## 512 133  83 102 
+
+## Clustercrit
+library("clusterCrit")
+intCriteria(traj = as.matrix(df_dum_scaled), part = sub_grp2, crit = c("Gamma", "Dunn"))
+
+```
+
+
+
+
+
+
+### Visualizing and adding clusters to data
+* We chose 4 groups based on above analysis
+
+"The height of the cut to the dendrogram controls the number of clusters obtained. It plays the same role as the k in k-means clustering. In order to identify sub-groups (i.e. clusters), we can cut the dendrogram with cutree."
+
+"We can also use the cutree output to add the the cluster each observation belongs to to our original data."
+
+```{r}
+# Cut tree into 4 groups
+sub_grp <- cutree(as.hclust(hc_agnes_ward), k = 4)
+
+# Number of members in each cluster
+table(sub_grp)
+## sub_grp
+##  1   2   3   4 
+## 223 188 365 233 
+```
+
+#### Summarizing numeric
+
+```{r}
+# 2 groups
+df_clustervars$cluster2 <- sub_grp2
+
+# 4 groups
+df_clustervars$cluster4 <- sub_grp4
+
+```
+
+```{r}
+# 2 groups
+df_clustervars %>% # excluding PIDP
+  group_by(cluster2) %>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+```
+
+```{r}
+# 4 df_interest_complete
+df_clustervars %>%
+  group_by(cluster4) %>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+
+```
+
+#### Summarizing categorical data
+```{r}
+factor_cols <- colnames(df_clustervars[,sapply(df_clustervars, is.factor) & colnames(df_clustervars) != c("pidp", "hidp")])
+
+cat_data <- df_clustervars %>% 
+  select(factor_cols)
+
+for(i in seq(1:ncol(cat_data))){
+  var <- colnames(cat_data)[i]
+  column_data <- cat_data[[i]]
+  print(colnames(cat_data[i]))
+  print(table("cluster" = df_clustervars$cluster2, column_data))
+}
+```
+
+# K-means clustering
