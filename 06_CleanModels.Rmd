@@ -64,12 +64,12 @@ df_all_post$sex_dv[df_all_post$sex_dv == 0] <- NA
 # Select vars for model
 
 * Locality - country ("country"), region in UK ("gor_dv"), urban or rural ("urban_dv")
-* Individual - race ("racel_dv"), sex ("sex_dv"), employment status ("jbstat"), marital status ("marstat")
+* Individual - race ("racel_dv"), sex ("sex_dv"), employment status ("jbstat"), marital status ("marstat"), health
 * Money/costs - total monthly income ("fihhmnnet1_dv"), monthly housing cost including mtg principal payment ("houscost1_dv")
 * Other - household size ("hhsize")
 
 ```{r}
-vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_recat", "sex_dv", "marstat_recat", "fihhmnnet1_dv", "houscost1_dv", "is_mtgprisoner", "wavenumber", "pidp", "age_dv", "hiqual_dv", "hsyr04","hscost" ) #, "fimngrs_dv", hhsize") # to do once i re-download all data w/ "hhsize"
+vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_recat", "sex_dv", "marstat_recat", "fihhmnnet1_dv", "houscost1_dv", "is_mtgprisoner", "wavenumber", "pidp", "age_dv", "hiqual_dv", "hsyr04","hscost", "health" ) #, "fimngrs_dv", hhsize") # to do once i re-download all data w/ "hhsize"
 
 df_interest <- select(df_all_post, one_of(vars_of_interest))
 df_interest$sex_dv <- as.factor(df_interest$sex_dv)
@@ -85,7 +85,7 @@ df_interest_complete <- droplevels(df_interest_complete)
 
 # log Reg Model
 ```{r}
-glm <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + poly(age_dv, 2) + hiqual_dv + wavenumber, data = df_interest_complete, family = binomial)
+glm <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + poly(age_dv, 2) + hiqual_dv + wavenumber + health, data = df_interest_complete, family = binomial)
 
 summary(glm)
 exp(glm$coefficients)
@@ -95,7 +95,7 @@ exp(glm$coefficients)
 
 ### Model
 ```{r}
-hsyr_glm <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + poly(age_dv, 2) + hiqual_dv + wavenumber + hsyr04, data = df_interest_complete, family = binomial)
+hsyr_glm <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + poly(age_dv, 2) + hiqual_dv + wavenumber + hsyr04 + health, data = df_interest_complete, family = binomial)
 
 summary(hsyr_glm)
 exp(hsyr_glm$coefficients)

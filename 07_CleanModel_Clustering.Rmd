@@ -68,7 +68,7 @@ df_postlegis$sex_dv <- as.factor(df_postlegis$sex_dv)
 df_postlegis$is_mtgprisoner <- as.factor(df_postlegis$is_mtgprisoner)
 
 # Define variables of interest
-vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_recat", "sex_dv", "marstat_recat", "fihhmnnet1_dv", "houscost1_dv", "is_mtgprisoner", "wavenumber", "pidp", "age_dv", "hiqual_dv", "hsyr04","hscost") #, "fimngrs_dv", hhsize") # to do once i re-download all data w/ "hhsize"
+vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_recat", "sex_dv", "marstat_recat", "fihhmnnet1_dv", "houscost1_dv", "is_mtgprisoner", "wavenumber", "pidp", "age_dv", "hiqual_dv", "hsyr04","hscost", "health") #, "fimngrs_dv", hhsize") # to do once i re-download all data w/ "hhsize"
 
 df_interest <- select(df_postlegis, one_of(vars_of_interest)) # create df
 
@@ -248,8 +248,8 @@ sub_grp4 <- cutree(as.hclust(hc_agnes_ward), k = 4)
 # Number of members in each cluster
 table(sub_grp4)
 ## sub_grp
-##  1   2   3   4 
-## 512 133  83 102 
+## 1   2   3   4 
+## 410 239 136  44 
 
 ## Clustercrit
 library("clusterCrit")
@@ -296,6 +296,10 @@ df_clustervars$cluster4 <- sub_grp4
 df_clustervars %>% # excluding PIDP
   group_by(cluster2) %>%
   summarise_if(is.numeric, mean, na.rm = TRUE)
+
+df_clustervars %>% # excluding PIDP
+  group_by(cluster2) %>%
+  summarise_if(is.numeric, median, na.rm = TRUE)
 ```
 
 ```{r}
@@ -317,8 +321,15 @@ for(i in seq(1:ncol(cat_data))){
   var <- colnames(cat_data)[i]
   column_data <- cat_data[[i]]
   print(colnames(cat_data[i]))
-  print(table("cluster" = df_clustervars$cluster2, column_data))
+  print(prop.table(table(cluster = df_clustervars$cluster2, column_data), margin = 1))
 }
 ```
 
 # K-means clustering
+
+# Aux function
+```{r}
+pct_df <- function(base, higher){(higher - base)/base}
+
+
+```
