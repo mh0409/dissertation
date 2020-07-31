@@ -35,6 +35,7 @@ cat_vars <- c("hsyr04", # year mortgage began
               "pacob", # father's country of birth (xwavedat)
               "paedqf", # father's educational qualification when respondent was aged 14 (xwavedat)
               "pasoc00_cc", # Standard Occupational Classification 2000 of father's job when respondent was aged 14 (xwavedat)
-              "wavenumber")
+              "wavenumber",
+              "ukborn")
 saveRDS(cat_vars, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/dissertation/cat_vars.rds")
 

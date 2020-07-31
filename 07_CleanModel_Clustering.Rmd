@@ -39,19 +39,14 @@ library("dplyr")
 # Categorical
 cat_vars <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/dissertation/cat_vars.rds")
 
-vars_of_interest <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/dissertation/vars_of_interest.rds")
-
-
 # Make sure vars are right data type
 df_postlegis[cat_vars] <- lapply(df_postlegis[cat_vars], as.factor)
 df_postlegis$wavenumber <- as.factor(df_postlegis$wavenumber)
 df_postlegis$sex_dv[df_postlegis$sex_dv == 0] <- NA
 df_postlegis$sex_dv <- as.factor(df_postlegis$sex_dv)
-df_postlegis$is_mtgprisoner <- as.factor(df_postlegis$is_mtgprisoner)
 
 # Define variables of interest
-vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_recat", "sex_dv", "marstat_recat", "fihhmnnet1_dv", "houscost1_dv", "is_mtgprisoner", "wavenumber", "pidp", "age_dv", "hiqual_dv", "hsyr04","hscost", "health") #, "fimngrs_dv", hhsize") # to do once i re-download all data w/ "hhsize"
-
+vars_of_interest <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/dissertation/vars_of_interest.rds")
 df_interest <- select(df_postlegis, one_of(vars_of_interest)) # create df
 
 # Keep only complete observations
@@ -61,8 +56,7 @@ df_interest_complete <- df_interest[complete.cases(df_interest) == TRUE, ]
 
 summary(df_interest_complete)
 
-
-df_clustervars <- df_interest_complete[, !names(df_interest_complete) %in% c("is_mtgprisoner", "country", "pidp", "fihhmnet1_dv", "houscost1_dv")]
+df_clustervars <- df_interest_complete[, !names(df_interest_complete) %in% c("country", "pidp")] # Remove country and PIDP from data frame
 
 ```
 
@@ -100,7 +94,6 @@ $d_i_j = d(i,j) = sum(k=1:p; w_k delta(ij;k) d(ij,k)) / sum(k=1:p; w_k delta(ij;
 ```{r}
 library("cluster")
 
-
 # Build dissimilarity matrix using gower distribution
 gower_dist <- daisy(df_clustervars, metric = c("gower")) # using only vars of interests used in log reg
 
@@ -119,6 +112,7 @@ onehot_dist <- stats::dist(df_dum_scaled, method = "manhattan")
 
 ```
 
+
 # Hierarchical clustering
 ```{r}
 library("factoextra")
@@ -130,20 +124,18 @@ library("purrr")
 
 ## Agglomerative (agnes)
 ```{r}
-set.seed(1) 
-
 # methods to assess
-m <- c( "average", "single", "complete", "ward")
-names(m) <- c( "average", "single", "complete", "ward")
+m <- c( "average", "single", "complete")
+names(m) <- c( "average", "single", "complete")
 
 # function to compute coefficient
 ac <- function(x) {
   agnes(gower_dist, method = x)$ac
 }
 
-map_dbl(m, ac) # ward (minimized within-cluster variance) has highest clustering coeff
-#   average    single  complete      ward 
-# 0.7445483 0.5581591 0.8262258 0.9678453 
+map_dbl(m, ac) # complete has highest ac
+#  average    single  complete 
+# 0.7713831 0.6183628 0.8472675 
 ```
 
 ### Dendogram of agnes -- USE THIS ONE
@@ -157,7 +149,7 @@ agnes_as_hclust <- as.hclust(hc_agnes_ward)
 
 ```
 
-## Agglomerative (hclust) -- USE THIS ACTUALLY
+## Agglomerative (hclust) 
 ```{r}
 # agg_hclust <- hclust(gower_asdist, method = "complete") ## NOT USING THIS ONE BC BAD RESULTS VS AGNES()
 
@@ -183,7 +175,7 @@ sub_grp2
 plot(agg_hclust, hang = -1) # from plot cut into 4?
 
 # Cut tree into 4 groups
-sub_grp4 <- cutree(as.hclust(hc_agnes_ward), k = 4)
+sub_grp4 <- cutree(as.hclust(hc_agnes_ward), k = 4) # suggested by PAM (see below)
 
 # Number of members in each cluster
 table(sub_grp4)
@@ -245,7 +237,8 @@ map_dbl(m, manhattan_coph_cor)
 
 ```
 
-## Run clustering algorithm 10 times to check for consistency
+## BAD Run clustering algorithm 10 times to check for consistency
+
 ```{r}
 library("mclust")
 
@@ -377,6 +370,8 @@ for(i in seq(1:ncol(cat_data))){
 
 # Divisive clustering
 (According to Berkeley source above, good at identifying large clusters)
+
+
 ```{r}
 divisive.clust <- diana(as.matrix(gower_dist), 
                   diss = TRUE, keep.diss = TRUE)
@@ -388,8 +383,6 @@ plot(divisive.clust, main = "Divisive")
 ```
 
 # Stats: Agglom vs. Div
-
-
 
 source: https://towardsdatascience.com/hierarchical-clustering-on-categorical-data-in-r-a27e578f2995
 ```{r}
@@ -436,14 +429,13 @@ output
 # I am capping the maximum amout of clusters by 7
 # I want to choose a reasonable number, based on which I will be able to see basic differences between customer groups as a result
 stats.df.divisive <- cstats.table(gower_dist, divisive.clust, 7)
-stats.df.divisive
-
-
 
 
 # Stats for agglomerative
-stats.agglom <- cstats.table(gower_dist, hc2, 7)
+stats.agglom <- cstats.table(gower_dist, hc_agnes_ward, 7)
 
+stats.df.divisive
+stats.agglom
 
 ```
 
@@ -457,20 +449,38 @@ library("factoextra") # clustering algorithms & visualization
 ```
 
 ## Visualize distance matrix
+source: https://uc-r.github.io/kmeans_clustering#silo
 ```{r}
 fviz_dist(gower_dist, gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
 
 ```
 
-## actual PAM
+## PAM - try many k's
 ```{r}
-asw <- numeric(20)
+asw <- numeric(15)
 
 for(i in 2:15){
-  k2 <- pam(gower_dist, diss = TRUE, k = i)
-  asw[k] <- pam(x, k) $ silinfo $ avg.width
-
+  asw[i] <- pam(gower_dist, diss = TRUE, k = i) $ silinfo $ avg.width
 }
+# max is 0.09192858, where there are 4 clusters
+
+k.best <- which.max(asw) + 1
+cat("silhouette-optimal number of clusters:", k.best, "\n")
+
+# Plot of silhouette
+plot(2:16, asw, type= "b", main = "pam() clustering assessment",
+     xlab= "k  (# clusters)", ylab = "average silhouette width")
+axis(1, k.best, paste("best",k.best,sep="\n"), col = "red", col.axis = "red")
+
+```
+
+
+
+## optimal PAM
+```{r}
+# Using k = 4 since that had max silhouette coefficient
+pam_1 <-  pam(gower_dist, diss = TRUE, k = 4)
+
 
 ```
 

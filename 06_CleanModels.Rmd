@@ -13,62 +13,35 @@ knitr::opts_chunk$set(echo = TRUE)
 library("tidyverse")
 ```
 
+# Load data 
 ```{r}
+df_all_postlegis <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_all_postlegis.rds")
 
-df_all <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_all_incl_mtgprisoners.rds")
+```
 
+# Load categorical vars and vars of interest
+```{r}
 # Categorical
-# Categorical
-cat_vars <- c("hsyr04", # year mortgage began
-              "mgtype", # mortgage type
-              "hiqual_dv", #Highest qualification
-              "jbsoc00_cc", # Standard socio-economic classification (SOC 2000) of current job; condensed 3 digit version
-              "jbnssec8_dv", # Current job (eight class ns-sec)
-              "jbnssec5_dv", # Current job (five class ns-sec)
-              "jbnssec3_dv", # Current job (three class ns-sec)
-              "health", # Long-standing illness or disability
-              "country", # Country in the UK
-              "gor_dv", # Region in the UK
-              "urban_dv", # Urban or rural area, derived
-              "sex_dv", # sex, derived
-              # "marstat", # Marital status
-              "marstat_recat", # marital status recategorised
-              # "jbstat", # Employment status
-              "jbstat_recat", # jbstat recategorised
-              "jbsemp", # Employed or self-employed
-              # "racel_dv.x", # Ethnic group (self-reported) (indresp)
-              # "ethn_dv.x", # Ethnic group - derived from multiple sources (indresp)
-              "racel_recat", # recategorised ethnic group
-  # Need to re-run code to get this var #   "j1soc00_cc", # Standard Socio-economic Classification (SOC 2000) of first job after leaving full-time education. Condensed three-digit version (xwavedat)
-              "maid", # mother's ethnic group (xwavedat)
-              "macob", # mother's country of birth (xwavedat)
-              "maedqf", # mother's educational qualification when respondent was aged 14 (xwavedat)
-              "masoc00_cc", # Standard Occupational Classification 2000 of mother's job when respondent was aged 14 (xwavedat)
-              "paid", # father's ethnic group (xwavedat)
-              "pacob", # father's country of birth (xwavedat)
-              "paedqf", # father's educational qualification when respondent was aged 14 (xwavedat)
-              "pasoc00_cc", # Standard Occupational Classification 2000 of father's job when respondent was aged 14 (xwavedat)
-              "wavenumber") 
+cat_vars <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/dissertation/cat_vars.rds")
 
-vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_recat", "sex_dv", "marstat_recat", "fihhmnnet1_dv", "houscost1_dv", "is_mtgprisoner", "wavenumber", "pidp", "age_dv", "hhsize", "ukborn") # to do once i re-download all data w/ "hhsize"
+# Make sure vars are right data type
+df_all_postlegis[cat_vars] <- lapply(df_all_postlegis[cat_vars], as.factor)
+df_all_postlegis$wavenumber <- as.factor(df_all_postlegis$wavenumber)
+df_all_postlegis$sex_dv[df_all_postlegis$sex_dv == 0] <- NA
+df_all_postlegis$sex_dv <- as.factor(df_all_postlegis$sex_dv)
 
-df_all[cat_vars] <- lapply(df_all[cat_vars], as.factor)
+# Define variables of interest
+vars_of_interest <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/dissertation/vars_of_interest.rds")
+df_interest <- select(df_all_postlegis, one_of(vars_of_interest)) # create df
 
-# test <- df_all
-# test$wavenumber <- as.numeric(df_all$wavenumber)
-# test$post_legis <- ifelse(df_all$wavenumber >= 6, 1, 0)
-# test$post_legis <- as.factor(test$post_legis)
-# 
-# 
-# test$sex_dv[df_all_post$sex_dv == 0] <- NA
-# test$wavenumber <- as.factor(test$wavenumber)
+# Keep only complete observations
+df_interest_complete <- df_interest[complete.cases(df_interest) == TRUE, ]
+# unique(df_interest_complete$hsyr04) # no NA data in df_interest_complete
+# df_interest_complete <- droplevels(df_interest_complete)
 
-df_all[cat_vars] <- lapply(df_all[cat_vars], factor)
-df_all_post <- df_all[df_all$wavenumber >= 6, ]
-df_all$wavenumber <- as.factor(df_all$wavenumber)
-df_all_post$wavenumber <- as.factor(df_all_post$wavenumber)
-df_all_post$sex_dv[df_all_post$sex_dv == 0] <- NA
+summary(df_interest_complete)
 
+df_clustervars <- df_interest_complete[, !names(df_interest_complete) %in% c("country", "pidp")] # Remove country and PIDP from data frame
 ```
 
 # Select vars for model
@@ -79,12 +52,6 @@ df_all_post$sex_dv[df_all_post$sex_dv == 0] <- NA
 * Other - household size ("hhsize")
 
 ```{r}
-vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_recat", "sex_dv", "marstat_recat", "fihhmnnet1_dv", "houscost1_dv", "is_mtgprisoner", "wavenumber", "pidp", "age_dv", "hiqual_dv", "hsyr04","hscost", "health", "hhsize", "ukborn") 
-
-df_interest <- select(df_all_post, one_of(vars_of_interest))
-df_interest$sex_dv <- as.factor(df_interest$sex_dv)
-
-df_interest_complete <- df_interest[complete.cases(df_interest) == TRUE, ]
 df_interest_complete$is_mtgprisoner <- as.factor(df_interest_complete$is_mtgprisoner)
 
 unique(df_interest_complete$hsyr04) # no NA data in df_interest_complete
@@ -94,20 +61,43 @@ df_interest_complete <- droplevels(df_interest_complete)
 saveRDS(df_interest_complete, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_interest_complete.rds")
 ```
 
+# Recategorize 'ukborn' into yes / no
+```{r}
+## ukborn
+df_interest_complete <- df_interest_complete %>%
+    mutate(ukborn_recat = case_when(ukborn == 1 ~ 1,
+                                  ukborn == 2 ~ 1,
+                                  ukborn == 3 ~ 1,
+                                  ukborn == 4 ~ 1,
+                                  ukborn == 5 ~ 2,
+                                  TRUE ~ 0))
+
+# Make reference employed people
+df_interest_complete$ukborn_recat <- as.factor(df_interest_complete$ukborn_recat)
+df_interest_complete <- within(df_interest_complete, ukborn_recat <- relevel(ukborn_recat, ref = 1))
+
+```
 
 # log Reg Model
 ```{r}
-glm <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + age_dv + hiqual_dv + wavenumber + health, data = df_interest_complete, family = binomial)
+glm <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + age_dv + hiqual_dv + wavenumber + health + ukborn + hhsize, data = df_interest_complete, family = binomial)
 
 summary(glm)
 exp(glm$coefficients)
+```
+## Pretty Tables - Stargazer
+```{r}
+library("stargazer")
+
+stargazer(df_interest_complete, type = "text")
+
 ```
 
 ## Robustness: hsyr_04
 
 ### Model
 ```{r}
-hsyr_glm <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + age_dv + hiqual_dv + wavenumber + hsyr04 + health, data = df_interest_complete, family = binomial)
+hsyr_glm <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + age_dv + hiqual_dv + wavenumber + hsyr04 + health + ukborn + hhsize, data = df_interest_complete, family = binomial)
 
 summary(hsyr_glm)
 exp(hsyr_glm$coefficients)
@@ -120,10 +110,16 @@ df_robust$hsyr_group <- ifelse(df_robust$hsyr04 < 2006, 1,
                            ifelse(df_robust$hsyr04 >= 2014, 3, 0)))
 df_robust$hsyr_group <- as.factor(df_robust$hsyr_group)
 
-hsyr_glm2 <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + age_dv + hiqual_dv + wavenumber + hsyr_group, data = df_robust, family = binomial)
+hsyr_glm2 <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + age_dv + hiqual_dv + wavenumber + hsyr04 + health + ukborn + hhsize + hsyr_group, data = df_robust, family = binomial)
 
 summary(hsyr_glm2)
 exp(hsyr_glm2$coefficients)
+```
+
+### Table
+```{r}
+stargazer(glm, type = "text")
+# options omit = c("coefficient name")
 ```
 
 `

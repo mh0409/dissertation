@@ -138,6 +138,45 @@ df_all <- within(df_all, racel_recat <- relevel(racel_recat, ref = 'white'))
 
 ```
 
+## jbstat
+```{r}
+df_all <- df_all %>%
+    mutate(jbstat_recat = case_when(jbstat == 1 ~ 'self-employed',
+                                  jbstat == 2 ~ 'employed',
+                                  jbstat == 3 ~ 'unemployed',
+                                  jbstat == 4 ~ 'not seeking work',
+                                  jbstat == 5 ~ 'maternity leave',
+                                  jbstat == 6 ~ 'not seeking work',
+                                  jbstat == 7 ~ 'not seeking work',
+                                  jbstat == 8 ~ 'LT sick/disabled',
+                                  jbstat == 9 ~ 'not seeking work',
+                                  jbstat == 10 ~ 'employed',
+                                  jbstat == 11 ~ 'employed',
+                                  TRUE ~ 'Something else'))
+
+# Make reference employed people
+df_all$jbstat_recat <- as.factor(df_all$jbstat_recat)
+df_all <- within(df_all, jbstat_recat <- relevel(jbstat_recat, ref = 'employed'))
+
+
+```
+
+## ukborn
+```{r}
+## ukborn
+df_all <- df_all %>%
+    mutate(ukborn_recat = case_when(ukborn == 1 ~ 1,
+                                  ukborn == 2 ~ 1,
+                                  ukborn == 3 ~ 1,
+                                  ukborn == 4 ~ 1,
+                                  ukborn == 5 ~ 2,
+                                  TRUE ~ 0))
+
+# Make reference employed people
+df_all$ukborn_recat <- as.factor(df_all$ukborn_recat)
+df_all <- within(df_all, ukborn_recat <- relevel(ukborn_recat, ref = 1))
+
+```
 
 # Save df
 ```{r}
