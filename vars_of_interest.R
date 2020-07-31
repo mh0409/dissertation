@@ -3,7 +3,7 @@
 vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_recat", "sex_dv", "marstat_recat", "fihhmnnet1_dv",
                       "houscost1_dv", "is_mtgprisoner", "wavenumber", "pidp", "age_dv", "hiqual_dv", "hsyr04",
                       "hscost", "health", "hhsize", "ukborn") 
-saveRDS(vars_of_interest, "vars_of_interest.rds")
+saveRDS(vars_of_interest, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/dissertation/vars_of_interest.rds")
 
 # Define categorical variables
 cat_vars <- c("hsyr04", # year mortgage began
@@ -36,5 +36,5 @@ cat_vars <- c("hsyr04", # year mortgage began
               "paedqf", # father's educational qualification when respondent was aged 14 (xwavedat)
               "pasoc00_cc", # Standard Occupational Classification 2000 of father's job when respondent was aged 14 (xwavedat)
               "wavenumber")
-saveRDS(cat_vars, "cat_vars.rds")
+saveRDS(cat_vars, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/dissertation/cat_vars.rds")
 
