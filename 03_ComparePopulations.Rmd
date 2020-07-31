@@ -27,7 +27,7 @@ Define mortgage prisoners: 1) self-employed
 # List of files to open (final mtg prisoner + conditions individually for desc stats)
 files <- list(
   # all mtg prisoners
-  "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_all_incl_mtgprisoners.rds",
+  "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_all_prisonerstatus.rds",
   # those that meet condition 1: self-employed
   "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_cond1.rds",
   # those that meet condition 2: interest-only mtg

@@ -21,6 +21,12 @@ df_postlegis <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertati
 
 ```
 
+# Aux function
+```{r}
+pct_df <- function(base, higher){(higher - base)/base}
+
+```
+
 # Prepare data
 
 1) Rows are observations (individuals) and columns are variables
@@ -30,6 +36,7 @@ df_postlegis <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertati
 ```{r}
 library("dplyr")
 
+# Categorical
 # Categorical
 cat_vars <- c("hsyr04", # year mortgage began
               "mgtype", # mortgage type
@@ -43,11 +50,14 @@ cat_vars <- c("hsyr04", # year mortgage began
               "gor_dv", # Region in the UK
               "urban_dv", # Urban or rural area, derived
               "sex_dv", # sex, derived
-              "marstat", # Marital status
-              "jbstat", # Employment status
+              # "marstat", # Marital status
+              "marstat_recat", # marital status recategorised
+              # "jbstat", # Employment status
+              "jbstat_recat", # jbstat recategorised
               "jbsemp", # Employed or self-employed
-              "racel_dv", # Ethnic group (self-reported) (indresp)
-              "ethn_dv", # Ethnic group - derived from multiple sources (indresp)
+              # "racel_dv.x", # Ethnic group (self-reported) (indresp)
+              # "ethn_dv.x", # Ethnic group - derived from multiple sources (indresp)
+              "racel_recat", # recategorised ethnic group
   # Need to re-run code to get this var #   "j1soc00_cc", # Standard Socio-economic Classification (SOC 2000) of first job after leaving full-time education. Condensed three-digit version (xwavedat)
               "maid", # mother's ethnic group (xwavedat)
               "macob", # mother's country of birth (xwavedat)
@@ -58,6 +68,8 @@ cat_vars <- c("hsyr04", # year mortgage began
               "paedqf", # father's educational qualification when respondent was aged 14 (xwavedat)
               "pasoc00_cc", # Standard Occupational Classification 2000 of father's job when respondent was aged 14 (xwavedat)
               "wavenumber") 
+
+vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_recat", "sex_dv", "marstat_recat", "fihhmnnet1_dv", "houscost1_dv", "is_mtgprisoner", "wavenumber", "pidp", "age_dv", "hhsize", "ukborn") # to do once i re-download all data w/ "hhsize"
 
 
 # Make sure vars are right data type
@@ -78,6 +90,10 @@ df_interest_complete <- df_interest[complete.cases(df_interest) == TRUE, ]
 # df_interest_complete <- droplevels(df_interest_complete)
 
 summary(df_interest_complete)
+
+
+df_clustervars <- df_interest_complete[, !names(df_interest_complete) %in% c("is_mtgprisoner", "country", "pidp", "fihhmnet1_dv", "houscost1_dv")]
+
 ```
 
 ## One-hot encoding (dummy vars) + scale
@@ -108,12 +124,12 @@ res.pcamix$eig
 ```
 
 # Dissmilarity matrix
+$d_i_j = d(i,j) = sum(k=1:p; w_k delta(ij;k) d(ij,k)) / sum(k=1:p; w_k delta(ij;k))$
 
 ## Gower
 ```{r}
 library("cluster")
 
-df_clustervars <- df_interest_complete[, !names(df_interest_complete) %in% c("is_mtgprisoner", "country", "pidp", "fihhmnet1_dv", "houscost1_dv")]
 
 # Build dissimilarity matrix using gower distribution
 gower_dist <- daisy(df_clustervars, metric = c("gower")) # using only vars of interests used in log reg
@@ -138,6 +154,77 @@ onehot_dist <- stats::dist(df_dum_scaled, method = "manhattan")
 library("factoextra")
 library("ggplot2")
 library("purrr")
+```
+
+
+
+## Agglomerative (agnes)
+```{r}
+set.seed(1) 
+
+# methods to assess
+m <- c( "average", "single", "complete", "ward")
+names(m) <- c( "average", "single", "complete", "ward")
+
+# function to compute coefficient
+ac <- function(x) {
+  agnes(gower_dist, method = x)$ac
+}
+
+map_dbl(m, ac) # ward (minimized within-cluster variance) has highest clustering coeff
+#   average    single  complete      ward 
+# 0.7445483 0.5581591 0.8262258 0.9678453 
+```
+
+### Dendogram of agnes -- USE THIS ONE
+Source: https://uc-r.github.io/hc_clustering#optimal
+
+```{r}
+hc_agnes_ward <- agnes(gower_dist, diss = TRUE, method = "complete")
+pltree(hc_agnes_ward, cex = 0.6, hang = -1, main = "Dendrogram of agnes") 
+
+agnes_as_hclust <- as.hclust(hc_agnes_ward)
+
+```
+
+## Agglomerative (hclust) -- USE THIS ACTUALLY
+```{r}
+# agg_hclust <- hclust(gower_asdist, method = "complete") ## NOT USING THIS ONE BC BAD RESULTS VS AGNES()
+
+# agnes_nbclust <- NbClust(diss =  gower_asdist,
+#         distance = NULL,
+#         method =  "complete",
+#         index = "silhouette")
+# agnes_nbclust$Best.nc
+# agnes_nbclust$Best.partition
+# Result from "average" says to cluster into 2 groups BUT 1 OF 829 AND 1 OF 1 -- THIS IS JUST WRONG
+
+# Cut tree into 2 groups
+sub_grp2 <- cutree(as.hclust(hc_agnes_ward), k = 2)
+
+# Number of members in each cluster
+table(sub_grp2)
+## sub_grp
+sub_grp2
+##  1   2 
+## 614 216 
+
+
+plot(agg_hclust, hang = -1) # from plot cut into 4?
+
+# Cut tree into 4 groups
+sub_grp4 <- cutree(as.hclust(hc_agnes_ward), k = 4)
+
+# Number of members in each cluster
+table(sub_grp4)
+## sub_grp
+## 1   2   3   4 
+## 410 239 136  44 
+
+## Clustercrit
+library("clusterCrit")
+intCriteria(traj = as.matrix(df_dum_scaled), part = sub_grp2, crit = c("Gamma", "Dunn"))
+
 ```
 
 ### Validate dendogram using cophenetic coefficient
@@ -188,74 +275,64 @@ map_dbl(m, manhattan_coph_cor)
 
 ```
 
-## Agglomerative (agnes)
+## Run clustering algorithm 10 times to check for consistency
 ```{r}
-set.seed(1) 
+library("mclust")
 
-# methods to assess
-m <- c( "average", "single", "complete", "ward")
-names(m) <- c( "average", "single", "complete", "ward")
+seeds <- numeric()
+subgrps <- data.frame()
 
-# function to compute coefficient
-ac <- function(x) {
-  agnes(gower_dist, method = x)$ac
+gow_dist <- daisy(df_clustervars[rows, ], metric = c("gower"))
+
+for(i in seq(1:10)){
+  set.seed(i)
+  
+  # # Shuffle rows
+  # rows <- sample(nrow(df_clustervars))
+  # gow_dist <- daisy(df_clustervars[rows, ], metric = c("gower"))
+  # 
+  # # Build distance matrix from shuffled df
+  # 
+  # # dend <- agnes(gow_dist, diss = TRUE, method = "complete")
+  # dend <- hclust(as.dist(gow_dist), method = "complete")
+  # 
+  # # Cut tree
+  # agnes_hclust <- as.hclust(dend) # get hclust() version of agnes()
+  # sub_grp <- cutree(agnes_hclust, k = 2) # cut tree at 2 clusters
+  # 
+  # # Organize by value IDs
+  # sub_grp_names <- as.numeric(names(sub_grp))
+  # df_subgrp <- data.frame("names" = sub_grp_names, "value" = sub_grp)
+  # df_subgrp <- df_subgrp[order(df_subgrp[, 1]), ]
+  # sorted_sub_grp <- df_subgrp$value
+  # names(sorted_sub_grp) <- df_subgrp$names
+  # subgrps <- rbind(subgrps, sorted_sub_grp)
+  
+  data(mtcars)
+  d <- dist(mtcars, method = "euclidean") # distance matrix
+  fit <- hclust(d, method="ward.D") 
+  groups <- cutree(fit, k=5) # cut tree into 5 clusters
+  subgrps <- rbind(subgrps, groups)
+
 }
 
-map_dbl(m, ac) # ward (minimized within-cluster variance) has highest clustering coeff
-#   average    single  complete      ward 
-# 0.7445483 0.5581591 0.8262258 0.9678453 
-```
+subgrps <- as.data.frame(t(subgrps))
 
-### Dendogram of agnes -- USE THIS ONE
-Source: https://uc-r.github.io/hc_clustering#optimal
+all_combos <- combn(1:10, 2)
 
-```{r}
-hc_agnes_ward <- agnes(gower_dist, diss = TRUE, method = "complete")
-pltree(hc_agnes_ward, cex = 0.6, hang = -1, main = "Dendrogram of agnes") 
+all_adjrand <- numeric()
 
-agnes_as_hclust <- as.hclust(hc_agnes_ward)
+for(i in seq(1,ncol(all_combos))){
+  classif_1 <- unlist(subgrps[all_combos[1, i]])
+  classif_2 <- unlist(subgrps[all_combos[2, i]])
+  adj_rand <- adjustedRandIndex(classif_1, classif_2)
+  all_adjrand <- append(all_adjrand, adj_rand)
+}
 
-```
-
-## Agglomerative (hclust) -- USE THIS ACTUALLY
-```{r}
-# agg_hclust <- hclust(gower_asdist, method = "complete") ## NOT USING THIS ONE BC BAD RESULTS VS AGNES()
-
-agnes_nbclust <- NbClust(diss =  gower_asdist,
-        distance = NULL,
-        method =  "complete",
-        index = "silhouette")
-agnes_nbclust$Best.nc
-agnes_nbclust$Best.partition
-# Result from "average" says to cluster into 2 groups BUT 1 OF 829 AND 1 OF 1 -- THIS IS JUST WRONG
-
-# Cut tree into 2 groups
-sub_grp2 <- cutree(as.hclust(hc_agnes_ward), k = 2)
-
-# Number of members in each cluster
-table(sub_grp2)
-## sub_grp
-sub_grp2
-##  1   2 
-## 614 216 
-
-
-plot(agg_hclust, hang = -1) # from plot cut into 4?
-
-# Cut tree into 4 groups
-sub_grp4 <- cutree(as.hclust(hc_agnes_ward), k = 4)
-
-# Number of members in each cluster
-table(sub_grp4)
-## sub_grp
-## 1   2   3   4 
-## 410 239 136  44 
-
-## Clustercrit
-library("clusterCrit")
-intCriteria(traj = as.matrix(df_dum_scaled), part = sub_grp2, crit = c("Gamma", "Dunn"))
+all_adjrand
 
 ```
+
 
 
 
@@ -325,11 +402,109 @@ for(i in seq(1:ncol(cat_data))){
 }
 ```
 
-# K-means clustering
 
-# Aux function
+
+
+# Divisive clustering
+(According to Berkeley source above, good at identifying large clusters)
 ```{r}
-pct_df <- function(base, higher){(higher - base)/base}
+divisive.clust <- diana(as.matrix(gower_dist), 
+                  diss = TRUE, keep.diss = TRUE)
+
+divisive.clust$dc
+
+plot(divisive.clust, main = "Divisive")
+
+```
+
+# Stats: Agglom vs. Div
+
+
+
+source: https://towardsdatascience.com/hierarchical-clustering-on-categorical-data-in-r-a27e578f2995
+```{r}
+library("fpc")
+
+cstats.table <- function(dist, tree, k) {
+clust.assess <- c("cluster.number","n","within.cluster.ss","average.within","average.between",
+                  "wb.ratio","dunn2","avg.silwidth")
+clust.size <- c("cluster.size")
+stats.names <- c()
+row.clust <- c()
+output.stats <- matrix(ncol = k, nrow = length(clust.assess))
+cluster.sizes <- matrix(ncol = k, nrow = k)
+for(i in c(1:k)){
+  row.clust[i] <- paste("Cluster-", i, " size")
+}
+for(i in c(2:k)){
+  stats.names[i] <- paste("Test", i-1)
+  
+  for(j in seq_along(clust.assess)){
+    output.stats[j, i] <- unlist(cluster.stats(d = dist, clustering = cutree(tree, k = i))[clust.assess])[j]
+    
+  }
+  
+  for(d in 1:k) {
+    cluster.sizes[d, i] <- unlist(cluster.stats(d = dist, clustering = cutree(tree, k = i))[clust.size])[d]
+    dim(cluster.sizes[d, i]) <- c(length(cluster.sizes[i]), 1)
+    cluster.sizes[d, i]
+    
+  }
+}
+output.stats.df <- data.frame(output.stats)
+cluster.sizes <- data.frame(cluster.sizes)
+cluster.sizes[is.na(cluster.sizes)] <- 0
+rows.all <- c(clust.assess, row.clust)
+# rownames(output.stats.df) <- clust.assess
+output <- rbind(output.stats.df, cluster.sizes)[ ,-1]
+colnames(output) <- stats.names[2:k]
+rownames(output) <- rows.all
+is.num <- sapply(output, is.numeric)
+output[is.num] <- lapply(output[is.num], round, 2)
+output
+}
+# I am capping the maximum amout of clusters by 7
+# I want to choose a reasonable number, based on which I will be able to see basic differences between customer groups as a result
+stats.df.divisive <- cstats.table(gower_dist, divisive.clust, 7)
+stats.df.divisive
+
+
+
+
+# Stats for agglomerative
+stats.agglom <- cstats.table(gower_dist, hc2, 7)
 
 
 ```
+
+# K-medoids - PAM
+source: https://uc-r.github.io/kmeans_clustering#silo
+
+```{r}
+library("tidyverse")  # data manipulation
+library("cluster")    # clustering algorithms
+library("factoextra") # clustering algorithms & visualization
+```
+
+## Visualize distance matrix
+```{r}
+fviz_dist(gower_dist, gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+
+```
+
+## actual PAM
+```{r}
+asw <- numeric(20)
+
+for(i in 2:15){
+  k2 <- pam(gower_dist, diss = TRUE, k = i)
+  asw[k] <- pam(x, k) $ silinfo $ avg.width
+
+}
+
+```
+
+
+
+
+

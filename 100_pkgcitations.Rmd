@@ -1,0 +1,21 @@
+---
+title: "100_pkgcitations"
+author: "Maria Jose Herrera"
+date: "7/29/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+pkgs_used <- c("tidyverse", "ggplot2", "naniar", "stringr", "tibble", "haven", "caret", "PCAmixdata", "cluster", "factoextra", "mclust")
+
+for(i in pkgs_used){
+  print(citation(i))
+}
+
+```

@@ -12,7 +12,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r}
-# install.packages("haven")
 library("haven")
 library("tidyverse")
 library("naniar")
@@ -39,10 +38,30 @@ w1_hh_file <- "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Underst
 # Load and clean data
 w1_key_indresp <- get_key_indvars(w1_ind_file, 1)
 w1_key_hhresp <- get_key_hhvars(w1_hh_file, 1)
-w1_clean <- clean_and_compile(w1_key_hhresp, w1_key_indresp, 1)
+w1_clean <- clean_and_compile(w1_key_hhresp, w1_key_indresp, 1) ## debugging below
 
-rm(w1_key_indresp) # remove from memory to free up space
-rm(w1_key_hhresp)
+# ## TRY THIS CODE OUTSIDE OF A FN ##
+# df_hh_clean <- replace_with_na_all(data = w1_key_hhresp, condition = ~.x %in% c(-21, -20, -11, -10, -9, -8, -7, -2, -1)) # replace "missing values" with NAs
+#   # df_hh_clean <- na.omit(df_hh_clean) # omit any rows that are incomplete observations
+#   
+#   # TODO: determine if i wanna omit incomplete observations
+#   
+# df_ind_clean <- replace_with_na_all(data = w1_key_indresp, condition = ~.x %in% c(-21, -20, -11, -10, -9, -8, -7, -2, -1)) # replace "missing values" with NAs
+# # df_ind_clean <- na.omit(df_ind_clean) # omit any rows that are incomplete observations
+#   
+# # df_xwave_clean <- replace_with_na_all(df_xwave, condition = ~.x %in% c(-21, -20, -11, -10, -9, -8, -7, -2, -1)) # replace "missing values" with NAs
+#   
+# # Combine indresp and hhresp data frames
+# wave_number <- 1
+# wave_hidp <- paste0(letters[wave_number], "_hidp")
+# 
+# df_combined <- left_join(x = df_ind_clean, y = df_hh_clean, by = wave_hidp)
+# 
+# df_combined$wavenumber <- wave_number
+# 
+# rm(w1_key_indresp) # remove from memory to free up space
+# rm(w1_key_hhresp)
+# ##
 
 # Save file
 saveRDS(w1_clean, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/w1_clean.rds")
@@ -246,6 +265,7 @@ df_xwave_clean <- replace_with_na_all(key_xwave, condition = ~.x %in% c(-21, -20
 
 # Save file
 saveRDS(df_xwave_clean, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/xwave_clean.rds")
+
 
 rm(df_xwave_clean)
 

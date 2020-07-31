@@ -31,6 +31,8 @@ Define mortgage prisoners: 1) self-employed
 
 
 ```{r}
+library("tidyverse")
+
 # Use glob when reading in all data
 clean_files <- Sys.glob(file.path("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/*_clean.rds"), dirmark = FALSE) ## gets the name of all files
 
@@ -108,24 +110,26 @@ df_all <- within(df_all, marstat_recat <- relevel(marstat_recat, ref = 'never ma
 ## racel_dv
 ```{r}
 df_all <- df_all %>%
-  mutate(racel_recat = case_when(racel_dv == 1 ~ 'white',
-                                   racel_dv == 2 ~ 'white',
-                                   racel_dv == 3 ~ 'white',
-                                   racel_dv == 4 ~ 'white',
-                                   racel_dv == 5 ~ 'mixed',
-                                   racel_dv == 6 ~ 'mixed',
-                                   racel_dv == 7 ~ 'mixed',
-                                   racel_dv == 8 ~ 'mixed',
-                                   racel_dv == 9 ~ 'asian/asian british',
-                                   racel_dv == 10 ~ 'asian/asian british',
-                                   racel_dv == 11 ~ 'asian/asian british',
-                                   racel_dv == 12 ~ 'asian/asian british',
-                                   racel_dv == 13 ~ 'asian/asian british',
-                                   racel_dv == 14 ~ 'black/black british',
-                                   racel_dv == 15 ~ 'black/black british',
-                                   racel_dv == 16 ~ 'black/black british',
-                                   racel_dv == 17 ~ 'other ethnic group',
+  mutate(racel_recat = case_when(racel_dv.x == 1 ~ 'white',
+                                   racel_dv.x == 2 ~ 'white',
+                                   racel_dv.x == 3 ~ 'white',
+                                   racel_dv.x == 4 ~ 'white',
+                                   racel_dv.x == 5 ~ 'mixed',
+                                   racel_dv.x == 6 ~ 'mixed',
+                                   racel_dv.x == 7 ~ 'mixed',
+                                   racel_dv.x == 8 ~ 'mixed',
+                                   racel_dv.x == 9 ~ 'asian/asian british',
+                                   racel_dv.x == 10 ~ 'asian/asian british',
+                                   racel_dv.x == 11 ~ 'asian/asian british',
+                                   racel_dv.x == 12 ~ 'asian/asian british',
+                                   racel_dv.x == 13 ~ 'asian/asian british',
+                                   racel_dv.x == 14 ~ 'black/black british',
+                                   racel_dv.x == 15 ~ 'black/black british',
+                                   racel_dv.x == 16 ~ 'black/black british',
+                                   racel_dv.x == 17 ~ 'other ethnic group',
                                    TRUE ~ 'other ethnic group'))
+
+df_all$racel_dv.y <- NULL # drop racel_dv.y since it's the same thing as its .x counterpart
 
 # Make reference white people
 df_all$racel_recat <- as.factor(df_all$racel_recat)
@@ -142,6 +146,13 @@ saveRDS(df_all, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Under
 
 ```
 
+# Only look at head of households
+```{r}
+# look at hrpid variable
+df_hoh <- df_all[df_all$pidp == df_all$hrpid, ] # keep only heads of household in data set
+
+```
+
 # Condition 1: Self-employed
 ```{r}
 # Condition 1: Self-employed
@@ -151,7 +162,7 @@ saveRDS(df_all, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Under
 # w_jbstat <- paste0(letters[wave_number], "_jbstat")
 # w6_cond1 <- filter(w6_data, get(w_jbstat) == 1) 
 
-cond1 <- filter(df_all, jbstat == 1) # need get() since value of variable is the actual column name
+cond1 <- filter(df_hoh, jbstat == 1) # need get() since value of variable is the actual column name
 saveRDS(cond1, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_cond1.rds")
 
 ```
@@ -165,7 +176,7 @@ saveRDS(cond1, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Unders
 # w_mgtype <- paste0(letters[wave_number], "_mgtype")
 # w6_cond2 <- filter(w6_data, get(w_mgtype) == 4)
 
-cond2 <- filter(df_all, mgtype == 4) # need get() since value of variable is the actual column name
+cond2 <- filter(df_hoh, mgtype == 4) # need get() since value of variable is the actual column name
 saveRDS(cond2, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_cond2.rds")
 
 ```
@@ -192,7 +203,7 @@ saveRDS(cond2, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Unders
 
 
 # (Var 2 - Var 3) / Var 1 = % income spent on mtg repayment
-cond3_1 <- df_all %>% 
+cond3_1 <- df_hoh %>% 
   mutate(
     mtg_principal  = houscost1_dv - houscost2_dv,
     pct_monthly = mtg_principal / fihhmnnet1_dv) %>%
@@ -210,8 +221,14 @@ saveRDS(cond3_1, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Unde
 # wave_number <- 6
 # w_xphsdb <- paste0(letters[wave_number], "_xphsdb")
 
-cond3_2 <- filter(df_all, xphsdb == 1) # need get() since value of variable is the actual column name
-saveRDS(cond3_2, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/cond3_2.rds")
+# cond3_2 <- filter(df_hoh, xphsdb == 1) # need get() since value of variable is the actual column name
+old_df <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/cond3_2.rds")
+
+cond32_ids <- old_df$pidp
+
+cond3_2 <- df_hoh[df_hoh$pidp %in% cond32_ids, ]
+
+saveRDS(cond3_2, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/updtd_cond3_2.rds")
 
 
 ```
@@ -219,9 +236,6 @@ saveRDS(cond3_2, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Unde
 # Combine into 1 df
 
 ```{r}
-
-# TODO: GOTTA CHANGE THE NAME FOR THE DF'S TO BE THE SAME!
-
 # Put all df's in a list
 ls_dfs <- list(cond1, cond2, cond3_1, cond3_2)
 
@@ -239,46 +253,72 @@ unique_mtgprisoners <- distinct(df_allcond, pidp, .keep_all = TRUE)
 unique_mtgprisoners$is_mtgprisoner <- 1
 
 # TODO: get rid of incomplete observations?
-# TODO: record that we have 28,259 mortgage prisoners!
+# TODO: record that we have 28,259 mortgage prisoners! ACTUALLY 4474 UNIQUE MTG PRISONERS IN UPDATED VERSION
 # TODO: explain how i got to this number in writing!
 ```
 
-# Save df of just mtg prisoners
+# Save df of just mtg prisoners head of households
 ```{r}
 # Save df of mtg prisoners
-saveRDS(unique_mtgprisoners, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners.rds")
+saveRDS(unique_mtgprisoners, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners_hoh.rds")
+
+```
+
+# Get all of the people in the household of mtg prisoners
+```{r}
+df_allmtgprisoners_inhh <- df_all[df_all$hrpid %in% unique_mtgprisoners$pidp, ]
+
+# validity check - the number of unique heads of household is the same as the nrow() of unique_mtgprisoners
+length(unique(df_allmtgprisoners_inhh$hrpid)) ## 4474
+nrow(unique_mtgprisoners) ## 4474
+
 
 ```
 
 # Now add column to df_all that indicates mtg prisoner status
 ```{r}
 # Get id's of mtg prisoners
-mtgprisoner_ids <- paste0(unique_mtgprisoners$pidp, unique_mtgprisoners$hidp) # trying to get same number (28k) as before since PIDP+ HIDP is unique
+mtgprisoner_ids <- paste0(df_allmtgprisoners_inhh$pidp, df_allmtgprisoners_inhh$hidp) # trying to get same number (28k) as before since PIDP+ HIDP is unique
 
 # Add column, where == 1 if mtg prisoner and == 0 if not
 df_all$is_mtgprisoner <- ifelse(paste0(df_all$pidp, df_all$hidp) %in% mtgprisoner_ids, 1, 0)
 
 # Save df
-saveRDS(df_all, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_all_incl_mtgprisoners.rds")
+saveRDS(df_all, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_all_prisonerstatus.rds")
+```
+
+# All people before and after law
+```{r}
+# All prelegis
+df_prelegis <- df_all[df_all$wavenumber < 6, ]
+
+# All post legis
+df_postlegis <- df_all[df_all$wavenumber >= 6, ]
+
+# Save df's
+saveRDS(df_prelegis, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_all_prelegis.rds")
+saveRDS(df_postlegis, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_all_postlegis.rds")
+
+
 ```
 
 # Mtg prisoners after 2014 (wave 6 - wave 9)
 ```{r}
 # Create mtg prisoners df from when legislation was passed (2014) onwards
-df_postlegis <- unique_mtgprisoners[unique_mtgprisoners$wavenumber >= 6, ]
+df_mtgprisoners_postlegis <- df_allmtgprisoners_inhh[df_allmtgprisoners_inhh$wavenumber >= 6, ]
 
 # Save df
-saveRDS(df_postlegis, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners_postlegis.rds")
+saveRDS(df_mtgprisoners_postlegis, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners_postlegis.rds")
 
 ```
 
 # Mtg prisoners before 2014 (wave 1 - wave 6)
 ```{r}
 # Create mtg prisoners df from when legislation was passed (2014) onwards
-df_prelegis <- unique_mtgprisoners[unique_mtgprisoners$wavenumber < 6, ]
+df_mtgprisoners_prelegis <- df_allmtgprisoners_inhh[df_allmtgprisoners_inhh$wavenumber < 6, ]
 
 # Save df
-saveRDS(df_prelegis, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners_prelegis.rds")
+saveRDS(df_mtgprisoners_prelegis, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners_prelegis.rds")
 
 ```
 

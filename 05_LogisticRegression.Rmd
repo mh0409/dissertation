@@ -21,6 +21,7 @@ library("tidyverse")
 df_all <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_all_incl_mtgprisoners.rds")
 
 # Categorical
+# Categorical
 cat_vars <- c("hsyr04", # year mortgage began
               "mgtype", # mortgage type
               "hiqual_dv", #Highest qualification
@@ -33,11 +34,14 @@ cat_vars <- c("hsyr04", # year mortgage began
               "gor_dv", # Region in the UK
               "urban_dv", # Urban or rural area, derived
               "sex_dv", # sex, derived
-              "marstat", # Marital status
-              "jbstat", # Employment status
+              # "marstat", # Marital status
+              "marstat_recat", # marital status recategorised
+              # "jbstat", # Employment status
+              "jbstat_recat", # jbstat recategorised
               "jbsemp", # Employed or self-employed
-              "racel_dv", # Ethnic group (self-reported) (indresp)
-              #  "ethn_dv", # Ethnic group - derived from multiple sources (indresp)
+              # "racel_dv.x", # Ethnic group (self-reported) (indresp)
+              # "ethn_dv.x", # Ethnic group - derived from multiple sources (indresp)
+              "racel_recat", # recategorised ethnic group
   # Need to re-run code to get this var #   "j1soc00_cc", # Standard Socio-economic Classification (SOC 2000) of first job after leaving full-time education. Condensed three-digit version (xwavedat)
               "maid", # mother's ethnic group (xwavedat)
               "macob", # mother's country of birth (xwavedat)
@@ -46,9 +50,12 @@ cat_vars <- c("hsyr04", # year mortgage began
               "paid", # father's ethnic group (xwavedat)
               "pacob", # father's country of birth (xwavedat)
               "paedqf", # father's educational qualification when respondent was aged 14 (xwavedat)
-              "pasoc00_cc") # Standard Occupational Classification 2000 of father's job when respondent was aged 14 (xwavedat)
+              "pasoc00_cc", # Standard Occupational Classification 2000 of father's job when respondent was aged 14 (xwavedat)
+              "wavenumber") 
 
-df_all[cat_vars] <- lapply(df_all[cat_vars], factor)
+vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_recat", "sex_dv", "marstat_recat", "fihhmnnet1_dv", "houscost1_dv", "is_mtgprisoner", "wavenumber", "pidp", "age_dv", "hhsize", "ukborn") # to do once i re-download all data w/ "hhsize"
+
+df_all[cat_vars] <- lapply(df_all[cat_vars], as.factor)
 df_all_post <- df_all[df_all$wavenumber >= 6, ]
 df_all$wavenumber <- as.factor(df_all$wavenumber)
 df_all_post$wavenumber <- as.factor(df_all_post$wavenumber)
@@ -65,7 +72,7 @@ df_all_post$sex_dv[df_all_post$sex_dv == 0] <- NA
 * Other - household size ("hhsize")
 
 ```{r}
-vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_recat", "sex_dv", "marstat_recat", "fihhmnnet1_dv", "houscost1_dv", "is_mtgprisoner", "wavenumber", "pidp", "age_dv") #, "hhsize") # to do once i re-download all data w/ "hhsize"
+vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_recat", "sex_dv", "marstat_recat", "fihhmnnet1_dv", "is_mtgprisoner", "wavenumber", "pidp", "age_dv", "hhsize", "ukborn") # to do once i re-download all data w/ "hhsize"
 
 df_interest <- select(df_all_post, one_of(vars_of_interest))
 df_interest$sex_dv <- as.factor(df_interest$sex_dv)
@@ -354,13 +361,13 @@ mtgprisoner_task <- makeClassifTask(data = df_interest_complete, target = "is_mt
 lrn <- makeLearner("classif.multinom", predict.type = "prob", trace = FALSE)
 
 ### introducing cost
-costs = matrix(c(0, 1, 3, 0), 2)
+costs = matrix(c(0, 1, 4, 0), 2)
 colnames(costs) = rownames(costs) = getTaskClassLevels(mtgprisoner_task)
 costs
 
 ### create a new performance Measure to calculate average cost 
 mtgprisoner_costs <- makeCostMeasure(id = "mtgprisoner_costs", name = "Mtg prisoner costs", costs = costs,
-  best = 0, worst = 3)
+  best = 0, worst = 4)
 mtgprisoner_costs
 
 
@@ -370,7 +377,7 @@ th
 
 ### create a new performance Measure to calculate average cost 
 mtgprisoner_costs <- makeCostMeasure(id = "mtgprisoner_costs", name = "Mtg prisoner costs", costs = costs,
-  best = 0, worst = 3)
+  best = 0, worst = 4)
 mtgprisoner_costs
 
 # Cross-validated performance with theoretical thresholds
@@ -407,8 +414,9 @@ print(c(accuracy, precision, recall, f1))
 
 
 ## plot the average costs as well as any other performance measure versus possible threshold values for the positive class in [0,1]
-d_cv <- generateThreshVsPerfData(r_cv, measures = list(mtgprisoner_costs, mmce))
-plotThreshVsPerf(d_cv, mark.th = th)
+# library("mlr")
+# d_cv <- generateThreshVsPerfData(r_cv, measures = list(mtgprisoner_costs, mmce))
+# plotThreshVsPerf(d_cv, mark.th = th)
 ```
 
 ### Empirical thresholding
@@ -435,7 +443,7 @@ lrn <- makeLearner("classif.multinom", predict.type = "prob", trace = FALSE)
 pred <- predict(mod, task = mtgprisoner_task)
 
 ### introducing cost
-costs = matrix(c(0, 1, 3, 0), 2)
+costs = matrix(c(0, 1, 4, 0), 2)
 colnames(costs) = rownames(costs) = getTaskClassLevels(mtgprisoner_task)
 costs
 
@@ -445,7 +453,7 @@ th
 
 ### create a new performance Measure to calculate average cost 
 mtgprisoner_costs <- makeCostMeasure(id = "mtgprisoner_costs", name = "Mtg prisoner costs", costs = costs,
-  best = 0, worst = 5)
+  best = 0, worst = 4)
 mtgprisoner_costs
 
 # Cross-validated performance with theoretical thresholds

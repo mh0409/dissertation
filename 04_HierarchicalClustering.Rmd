@@ -59,11 +59,14 @@ cat_vars <- c("hsyr04", # year mortgage began
               "gor_dv", # Region in the UK
               "urban_dv", # Urban or rural area, derived
               "sex_dv", # sex, derived
-              "marstat", # Marital status
-              "jbstat", # Employment status
+              # "marstat", # Marital status
+              "marstat_recat", # marital status recategorised
+              # "jbstat", # Employment status
+              "jbstat_recat", # jbstat recategorised
               "jbsemp", # Employed or self-employed
-              "racel_dv", # Ethnic group (self-reported) (indresp)
-              "ethn_dv", # Ethnic group - derived from multiple sources (indresp)
+              # "racel_dv.x", # Ethnic group (self-reported) (indresp)
+              # "ethn_dv.x", # Ethnic group - derived from multiple sources (indresp)
+              "racel_recat", # recategorised ethnic group
   # Need to re-run code to get this var #   "j1soc00_cc", # Standard Socio-economic Classification (SOC 2000) of first job after leaving full-time education. Condensed three-digit version (xwavedat)
               "maid", # mother's ethnic group (xwavedat)
               "macob", # mother's country of birth (xwavedat)
@@ -75,13 +78,13 @@ cat_vars <- c("hsyr04", # year mortgage began
               "pasoc00_cc", # Standard Occupational Classification 2000 of father's job when respondent was aged 14 (xwavedat)
               "wavenumber") 
 
-vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_recat", "sex_dv", "marstat_recat", "fihhmnnet1_dv", "houscost1_dv", "is_mtgprisoner", "wavenumber", "pidp", "age_dv") #, "hhsize") # to do once i re-download all data w/ "hhsize"
+vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_recat", "sex_dv", "marstat_recat", "fihhmnnet1_dv", "houscost1_dv", "is_mtgprisoner", "wavenumber", "pidp", "age_dv", "hhsize", "ukborn") # to do once i re-download all data w/ "hhsize"
 
 df_interest <- select(df_all_post, one_of(vars_of_interest))
+
+
 df_interest$sex_dv <- as.factor(df_interest$sex_dv)
-
-
-df_postlegis[cat_vars] <- lapply(df_postlegis[cat_vars], factor)
+df_postlegis[cat_vars] <- lapply(df_postlegis[cat_vars], as.factor)
 
 # gower_dist <- daisy(df_postlegis, metric = c("gower"))  ### old
 
@@ -89,29 +92,54 @@ gower_dist <- daisy(df_interest, metric = c("gower")) # new -- using only vars o
 
 ```
 
+# K-medoids - PAM
+source: https://uc-r.github.io/kmeans_clustering#silo
 
+```{r}
+library("tidyverse")  # data manipulation
+library("cluster")    # clustering algorithms
+library("factoextra") # clustering algorithms & visualization
+```
 
-# Agglomerative clustering (AGNES) - bottom-up
+## Visualize distance matrix
+```{r}
+fviz_dist(gower_dist, gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+
+```
+
+## actual PAM
+```{r}
+asw <- numeric(20)
+
+for(i in 2:15){
+  k2 <- pam(gower_dist, diss = TRUE, k = i)
+  asw[k] <- pam(x, k) $ silinfo $ avg.width
+
+}
+
+```
+
+# Agglomerative clustering - bottom-up
 
 (According to Berkeley source above, good at identifying small clusters)
 
 ## hclust()
 
-### No preproccessing
+### No preproccessing - NOT USING SINCE EUCLIDEAN ISN'T VALID HERE
 ```{r}
-# Dissimilarity matrix
-d <- dist(df_postlegis, method = "euclidean")
-
-# Hierarchical clustering using Complete Linkage
-hc1 <- hclust(d, method = "complete" )
-
-# Plot the obtained dendrogram
-plot(hc1, cex = 0.6, hang = -1)
+# # Dissimilarity matrix
+# d <- dist(df_postlegis, method = "euclidean")
+# 
+# # Hierarchical clustering using Complete Linkage
+# hc1 <- hclust(d, method = "complete" )
+# 
+# # Plot the obtained dendrogram
+# plot(hc1, cex = 0.6, hang = -1)
 
 
 ```
 
-### With processing
+### Using hclust + gower
 ```{r}
 aggl_clust_c <- hclust(gower_dist, method = "complete")
 plot(aggl_clust_c, main = "Agglomerative, complete linkages")
@@ -127,7 +155,9 @@ plot(aggl_clust_c, main = "Agglomerative, complete linkages")
 ## agnes()
 ```{r}
 # Compute with agnes
-hc2 <- agnes(df_postlegis, method = "complete")
+hc2 <- agnes(as.matrix(gower_dist),
+             diss = TRUE, method = "complete")
+plot(hc2)
 
 # Agglomerative coefficient
 hc2$ac
@@ -141,11 +171,16 @@ hc2$ac
 ```{r}
 divisive.clust <- diana(as.matrix(gower_dist), 
                   diss = TRUE, keep.diss = TRUE)
+
+divisive.clust$dc
+
 plot(divisive.clust, main = "Divisive")
 
 ```
 
 # Stats
+
+source: https://towardsdatascience.com/hierarchical-clustering-on-categorical-data-in-r-a27e578f2995
 ```{r}
 library("fpc")
 
@@ -193,6 +228,12 @@ stats.df.divisive <- cstats.table(gower_dist, divisive.clust, 7)
 stats.df.divisive
 
 
+
+
+# Stats for agglomerative
+stats.agglom <- cstats.table(gower_dist, hc2, 7)
+
+
 ```
 
 # Choosing number of clusters
@@ -236,6 +277,7 @@ library("Rtsne")
 ## build dissimilarity matrix using gower for cateogrical variables
 ```{r}
 # Categorical
+# Categorical
 cat_vars <- c("hsyr04", # year mortgage began
               "mgtype", # mortgage type
               "hiqual_dv", #Highest qualification
@@ -248,11 +290,14 @@ cat_vars <- c("hsyr04", # year mortgage began
               "gor_dv", # Region in the UK
               "urban_dv", # Urban or rural area, derived
               "sex_dv", # sex, derived
-              "marstat", # Marital status
-              "jbstat", # Employment status
+              # "marstat", # Marital status
+              "marstat_recat", # marital status recategorised
+              # "jbstat", # Employment status
+              "jbstat_recat", # jbstat recategorised
               "jbsemp", # Employed or self-employed
-              "racel_dv", # Ethnic group (self-reported) (indresp)
-              "ethn_dv", # Ethnic group - derived from multiple sources (indresp)
+              # "racel_dv.x", # Ethnic group (self-reported) (indresp)
+              # "ethn_dv.x", # Ethnic group - derived from multiple sources (indresp)
+              "racel_recat", # recategorised ethnic group
   # Need to re-run code to get this var #   "j1soc00_cc", # Standard Socio-economic Classification (SOC 2000) of first job after leaving full-time education. Condensed three-digit version (xwavedat)
               "maid", # mother's ethnic group (xwavedat)
               "macob", # mother's country of birth (xwavedat)
@@ -264,7 +309,9 @@ cat_vars <- c("hsyr04", # year mortgage began
               "pasoc00_cc", # Standard Occupational Classification 2000 of father's job when respondent was aged 14 (xwavedat)
               "wavenumber") 
 
-df_postlegis[cat_vars] <- lapply(df_postlegis[cat_vars], factor)
+vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_recat", "sex_dv", "marstat_recat", "fihhmnnet1_dv", "houscost1_dv", "is_mtgprisoner", "wavenumber", "pidp", "age_dv", "hhsize", "ukborn") # to do once i re-download all data w/ "hhsize"
+
+df_postlegis[cat_vars] <- lapply(df_postlegis[cat_vars], as.factor)
 
 ```
 
