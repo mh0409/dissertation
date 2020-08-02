@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 Note to sef: the data is only looking at mortgage prisoners after 2014 (when regulation was passed).
 
 ```{r}
-df_postlegis <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners_postlegis.rds")
+c <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners_postlegis.rds")
 # df_prelegis <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners_prelegis.rds") # don't need for now
 
 ```
@@ -143,7 +143,10 @@ Source: https://uc-r.github.io/hc_clustering#optimal
 
 ```{r}
 hc_agnes_ward <- agnes(gower_dist, diss = TRUE, method = "complete")
+
+pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/agnes_tree.pdf")
 pltree(hc_agnes_ward, cex = 0.6, hang = -1, main = "Dendrogram of agnes") 
+dev.off()
 
 agnes_as_hclust <- as.hclust(hc_agnes_ward)
 
@@ -169,7 +172,7 @@ table(sub_grp2)
 ## sub_grp
 sub_grp2
 ##  1   2 
-## 614 216 
+## 525 954 
 
 
 plot(agg_hclust, hang = -1) # from plot cut into 4?
@@ -181,7 +184,7 @@ sub_grp4 <- cutree(as.hclust(hc_agnes_ward), k = 4) # suggested by PAM (see belo
 table(sub_grp4)
 ## sub_grp
 ## 1   2   3   4 
-## 410 239 136  44 
+## 251 612 342 274 
 
 ## Clustercrit
 library("clusterCrit")
@@ -311,13 +314,23 @@ all_adjrand
 
 ```{r}
 # Cut tree into 4 groups
-sub_grp <- cutree(as.hclust(hc_agnes_ward), k = 4)
+sub_grp4 <- cutree(as.hclust(hc_agnes_ward), k = 4)
 
 # Number of members in each cluster
-table(sub_grp)
+table(sub_grp4)
 ## sub_grp
 ##  1   2   3   4 
-## 223 188 365 233 
+## 251 612 342 274  
+
+
+# Cut tree into 2 groups
+sub_grp2 <- cutree(as.hclust(hc_agnes_ward), k = 2)
+
+# Number of members in each cluster
+table(sub_grp2)
+## sub_grp
+##  1   2  
+## 525 954  
 ```
 
 #### Summarizing numeric
@@ -347,6 +360,10 @@ df_clustervars %>% # excluding PIDP
 df_clustervars %>%
   group_by(cluster4) %>%
   summarise_if(is.numeric, mean, na.rm = TRUE)
+
+df_clustervars %>% # excluding PIDP
+  group_by(cluster4) %>%
+  summarise_if(is.numeric, median, na.rm = TRUE)
 
 ```
 
