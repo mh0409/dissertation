@@ -483,13 +483,32 @@ df_cat_percent <- df_categorical %>%
   count(value) %>%
   mutate(pct = n / sum(n) * 100)
 
-    
+
+   
+
 ## NOW UPDATE THIS GRAPH TO SHOW
 pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_2clust_pct_boxplots.pdf")
 ggplot(data = df_cat_percent, aes(x = value, y = pct,  fill = cluster2)) +
   geom_col(position = "dodge") + 
-  facet_wrap(~variable, scales = "free")
+  facet_wrap(~variable, scales = "free") +
+  ggtitle("% within cluster")
 dev.off()
+
+
+#### THIS LOOKS AT IF I WANNA SEE % OF ALL POPULATION
+# df_cat_percent <- df_categorical %>%
+#     melt(id.var = "cluster4") %>%
+#   group_by(variable, cluster4) %>%
+#   count(value) %>%
+#   mutate(pct = n / nrow(df_categorical) * 100)
+#  
+
+## NOW UPDATE THIS GRAPH TO SHOW
+# pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_2clust_pct_boxplots.pdf") ## CHANGE FILE NAME
+# ggplot(data = df_cat_percent, aes(x = value, y = pct,  fill = cluster2)) +
+#   geom_col(position = "dodge") + 
+#   facet_wrap(~variable, scales = "free")
+# dev.off()
 
 ```
 
@@ -526,24 +545,39 @@ df_fourclust_cat_melt$cluster4 <- as.factor(df_fourclust_cat_melt$cluster4)
 pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_2clust_count_boxplots.pdf")
 ggplot(data = df_fourclust_cat_melt, aes(x = value,  fill = cluster4)) +
   geom_bar(position = "dodge") + 
-  facet_wrap(~variable, scales = "free")
+  facet_wrap(~variable, scales = "free") 
 dev.off()
 
 ## now make one based on proportion of cluster population
 df_cat_percent <- df_categorical %>%
-    melt(id.var = "cluster2") %>%
-  group_by(variable, cluster2) %>%
+    melt(id.var = "cluster4") %>%
+  group_by(variable, cluster4) %>%
   count(value) %>%
   mutate(pct = n / sum(n) * 100)
 
     
 ## NOW UPDATE THIS GRAPH TO SHOW
-pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_2clust_pct_boxplots.pdf")
-ggplot(data = df_cat_percent, aes(x = value, y = pct,  fill = cluster2)) +
+pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_4clust_pct_boxplots.pdf")
+ggplot(data = df_cat_percent, aes(x = value, y = pct,  fill = cluster4)) +
   geom_col(position = "dodge") + 
-  facet_wrap(~variable, scales = "free")
+  facet_wrap(~variable, scales = "free") +
+  ggtitle("% within cluster")
 dev.off()
 
+#### THIS LOOKS AT IF I WANNA SEE % OF ALL POPULATION
+# df_cat_percent <- df_categorical %>%
+#     melt(id.var = "cluster4") %>%
+#   group_by(variable, cluster4) %>%
+#   count(value) %>%
+#   mutate(pct = n / nrow(df_categorical) * 100)
+#  
+#
+## NOW UPDATE THIS GRAPH TO SHOW
+# pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_4clust_pct_boxplots.pdf") ## UPDATE NAME
+# ggplot(data = df_cat_percent, aes(x = value, y = pct,  fill = cluster4)) +
+#   geom_col(position = "dodge") + 
+#   facet_wrap(~variable, scales = "free")
+# dev.off()
 
 ```
 
