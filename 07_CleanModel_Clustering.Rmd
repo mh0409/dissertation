@@ -346,28 +346,38 @@ df_clustervars$cluster4 <- sub_grp4
 
 ```{r}
 # 2 groups
-df_clustervars %>% # excluding PIDP
+twocluster_num_mean <- df_clustervars %>% # excluding PIDP
   group_by(cluster2) %>%
   summarise_if(is.numeric, mean, na.rm = TRUE)
 
-df_clustervars %>% # excluding PIDP
+saveRDS(twocluster_num_mean, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_twocluster_num_mean.rds")
+
+twocluster_num_median <- df_clustervars %>% # excluding PIDP
   group_by(cluster2) %>%
   summarise_if(is.numeric, median, na.rm = TRUE)
+saveRDS(twocluster_num_median, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_twocluster_num_median.rds")
+
+
 ```
 
 ```{r}
 # 4 df_interest_complete
-df_clustervars %>%
+fourcluster_num_mean <- df_clustervars %>%
   group_by(cluster4) %>%
   summarise_if(is.numeric, mean, na.rm = TRUE)
 
-df_clustervars %>% # excluding PIDP
+saveRDS(fourcluster_num_mean, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_fourcluster_num_mean.rds")
+
+fourcluster_num_median <- df_clustervars %>% # excluding PIDP
   group_by(cluster4) %>%
   summarise_if(is.numeric, median, na.rm = TRUE)
+saveRDS(fourcluster_num_median, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_fourcluster_num_median.rds")
+
+
 
 ```
 
-#### Summarizing categorical data
+#### 2 cluster Summarizing categorical data
 ```{r}
 factor_cols <- colnames(df_clustervars[,sapply(df_clustervars, is.factor) & colnames(df_clustervars) != c("pidp", "hidp")])
 
@@ -379,6 +389,21 @@ for(i in seq(1:ncol(cat_data))){
   column_data <- cat_data[[i]]
   print(colnames(cat_data[i]))
   print(prop.table(table(cluster = df_clustervars$cluster2, column_data), margin = 1))
+}
+```
+
+### 4 cluster cat vars
+```{r}
+factor_cols <- colnames(df_clustervars[,sapply(df_clustervars, is.factor) & colnames(df_clustervars) != c("pidp", "hidp")])
+
+cat_data <- df_clustervars %>% 
+  select(factor_cols)
+
+for(i in seq(1:ncol(cat_data))){
+  var <- colnames(cat_data)[i]
+  column_data <- cat_data[[i]]
+  print(colnames(cat_data[i]))
+  print(prop.table(table(cluster = df_clustervars$cluster4, column_data), margin = 1))
 }
 ```
 
@@ -454,6 +479,9 @@ stats.agglom <- cstats.table(gower_dist, hc_agnes_ward, 7)
 stats.df.divisive
 stats.agglom
 
+saveRDS(stats.df.divisive, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/")
+saveRDS(stats.agglom, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/")
+
 ```
 
 # K-medoids - PAM
@@ -468,7 +496,9 @@ library("factoextra") # clustering algorithms & visualization
 ## Visualize distance matrix
 source: https://uc-r.github.io/kmeans_clustering#silo
 ```{r}
+pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/distance_plot.pdf")
 fviz_dist(gower_dist, gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+dev.off()
 
 ```
 
@@ -485,9 +515,11 @@ k.best <- which.max(asw) + 1
 cat("silhouette-optimal number of clusters:", k.best, "\n")
 
 # Plot of silhouette
+pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/pam_silhouette.pdf")
 plot(2:16, asw, type= "b", main = "pam() clustering assessment",
      xlab= "k  (# clusters)", ylab = "average silhouette width")
 axis(1, k.best, paste("best",k.best,sep="\n"), col = "red", col.axis = "red")
+dev.off()
 
 ```
 
@@ -497,9 +529,39 @@ axis(1, k.best, paste("best",k.best,sep="\n"), col = "red", col.axis = "red")
 ```{r}
 # Using k = 4 since that had max silhouette coefficient
 pam_1 <-  pam(gower_dist, diss = TRUE, k = 4)
+pam_clusters <- pam_1$clustering # vector indicating membership acc to pam optimal
 
 
 ```
+
+### Summary
+```{r}
+# 4 groups
+df_clustervars$pam_clusters <- pam_clusters
+
+```
+
+```{r}
+#  Numeric
+df_clustervars %>% # excluding PIDP
+  group_by(pam_clusters) %>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+
+# Categorical 
+factor_cols <- colnames(df_clustervars[,sapply(df_clustervars, is.factor) & colnames(df_clustervars) != c("pidp", "hidp")])
+
+cat_data <- df_clustervars %>% 
+  select(factor_cols)
+
+for(i in seq(1:ncol(cat_data))){
+  var <- colnames(cat_data)[i]
+  column_data <- cat_data[[i]]
+  print(colnames(cat_data[i]))
+  print(prop.table(table(cluster = df_clustervars$pam_clusters, column_data), margin = 1))
+}
+```
+
+
 
 
 

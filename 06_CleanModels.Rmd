@@ -467,7 +467,7 @@ predicted_classes <- ifelse(test_probs > 0.24, 1, 0)
 roc_obj <- roc(test_set$is_mtgprisoner, predicted_classes)
 auc(roc_obj)
 
-pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/test_ROC.pdf")
+pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/testAUC.pdf")
 plot(roc_obj, main = "ROC curve", colorize = T)
 dev.off() 
 
