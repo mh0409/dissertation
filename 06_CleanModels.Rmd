@@ -184,7 +184,7 @@ N <- floor((1/10) * nrow(train_set))
 
 avg_metrics <- data.frame()
 
-for(j in seq(0.2, 0.6, 0.1)){
+for(j in seq(0.2, 0.5, 0.1)){
   
   metrics <- data.frame()
   
@@ -240,38 +240,153 @@ saveRDS(avg_metrics, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/
 ## For 0.7 and 0.8, model predicting all as non-mortgageprisoners
 ```
 
+
+### Fixed metrics calcs
 ```{r}
 probabilities <-  predict.glm(train_mod, train_set, type = "response")
-predicted_classes <- ifelse(probabilities > i, 1, 0)
+predicted_classes <- ifelse(probabilities > th, 2, 1)
 
 table(predicted_classes)
 
 retrieved <- sum(predicted_classes, na.rm = TRUE)
-truth <- as.numeric(test_set$is_mtgprisoner)
+truth <- as.numeric(train_set$is_mtgprisoner)
+
+results <- data.frame()
+
+# Create confusion matrix
+confusion_matrix <- table(predicted_classes, truth)
 
 # Accuracy
-accuracy_metric <- mean(predicted_classes == truth, na.rm = TRUE)
+cf_accuracy <- (confusion_matrix[1, 1] + confusion_matrix[2, 2]) / sum(confusion_matrix)
 
 # Precision
-precision_metric <- sum(predicted_classes & truth, na.rm = TRUE) / retrieved
+cf_precision <- confusion_matrix[2, 2] / .rowSums(confusion_matrix, m = 2, n = 2)[2]
 
 # Recall
-recall_metric <- sum(predicted_classes & truth, na.rm = TRUE) / sum(truth)
+cf_recall <- confusion_matrix[2, 2]/ .colSums(confusion_matrix, m = 2, n = 2)[2]
 
 # F1
-f1_metric <- 2 * precision_metric * recall_metric / (precision_metric + recall_metric)
+cf_f1 <- 2*((cf_precision * cf_recall) / (cf_precision + cf_recall))
 
-new_row <- c(i, accuracy_metric, precision_metric, recall_metric, f1_metric)
-  
-grid_search <- rbind(grid_search, new_row)
-  
-
+# Aggregate rows into a new measure
+new_row <- c(th, cf_accuracy, cf_precision, cf_recall, cf_f1)
+results <- rbind(results, new_row) # add to df
 
 # Rename columns
 gs_colnames <- c("threshold_value", "accuracy", "precision", "recall", "f1")
-colnames(grid_search) <- gs_colnames
+colnames(results) <- gs_colnames
 
-grid_search
+# See result
+results
+
+
+```
+### Grid search by 0.01
+```{r}
+
+# create empty df
+grid_search <- data.frame()
+
+library("plm")
+
+# Shuffle train set df
+set.seed(1)
+rows <- sample(1:nrow(train_set), nrow(train_set))
+train_set <- train_set[rows, ]
+
+# Number of elements for each fold
+N <- floor((1/10) * nrow(train_set))
+
+avg_metrics <- data.frame()
+
+for(j in seq(0.2, 0.3, 0.01)){
+  
+  metrics <- data.frame()
+  
+  for (i in 1:10) {
+    if (i < 10){
+      val_idx <- ((N * (i - 1) + 1):(N * i))
+    }
+  else {
+    val_idx <- ((N * (i - 1) + 1):nrow(train_set))
+  }
+    val <- train_set[val_idx, ]
+    train <- train_set[-val_idx, ]
+    
+  
+    ## WOULD THIS ROW NEED TO BE REPLACED WITH THE METRIC THAT I'M OPTIMIZING FOR? (F1?)    
+    probs <- predict.glm(train_mod, val, type = "response") 
+    
+    # Get 0 or 1 predictions from probability (using threshold)
+    predictions <- ifelse(probs > j, 1, 0) ## SET THRESHOLD BASED ON BEST ONE
+    actuals <- val$is_mtgprisoner
+    
+    # Create confusion matrix - row is predictions, columns is actuals
+    confusion_matrix <- table(predictions, actuals)
+    print(confusion_matrix)
+    
+    # Calculate accuracy
+    accuracy <- (confusion_matrix[1, 1] + confusion_matrix[2, 2]) / sum(confusion_matrix)
+  
+    # Calculate precision -- when it predicts "yes", how often is it correct?
+    precision <- confusion_matrix[2, 2] / .rowSums(confusion_matrix, m = 2, n = 2)[2]  
+    
+    # Calculate recall -- when it predicts "yes", how many cases of real positives did it capture?
+    recall <- confusion_matrix[2, 2]/ .colSums(confusion_matrix, m = 2, n = 2)[2]
+    
+    # Calculate F1
+    f1 <- 2*((precision * recall) / (precision + recall))
+    
+    new_row <- c(j, accuracy, precision, recall, f1)
+    
+    metrics <- rbind(metrics, new_row)
+    
+  }
+  
+  avg_row <- unlist(lapply(metrics, mean))
+  avg_metrics <- rbind(avg_metrics, avg_row)
+
+}
+colnames(avg_metrics) <- c("threshold", "accuracy", "precision", "recall", "f1")
+avg_metrics
+
+saveRDS(avg_metrics, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_predictivemodel.rds")
+
+## For 0.7 and 0.8, model predicting all as non-mortgageprisoners
+```
+
+### WRONG CALCS - IGNORE
+```{r}
+# # Accuracy
+# accuracy_metric <- mean(predicted_classes == truth, na.rm = TRUE)
+# 
+# 
+# # Precision
+# precision_metric <- sum(predicted_classes == truth, na.rm = TRUE) / retrieved
+# 
+# # Recall
+# recall_metric <- sum(predicted_classes == truth, na.rm = TRUE) / sum(truth)
+# 
+# # F1
+# f1_metric <- 2 * precision_metric * recall_metric / (precision_metric + recall_metric)
+# 
+# new_row <- c(th, accuracy_metric, precision_metric, recall_metric, f1_metric)
+#   
+# grid_search <- rbind(grid_search, new_row)
+# 
+# # vs confusion matrix calculations  
+# confusion_matrix <- table(predicted_classes, truth)
+# cf_accuracy <- (confusion_matrix[1, 1] + confusion_matrix[2, 2]) / sum(confusion_matrix)
+# cf_precision <- confusion_matrix[2, 2] / .rowSums(confusion_matrix, m = 2, n = 2)[2]
+# cf_recall <- confusion_matrix[2, 2]/ .colSums(confusion_matrix, m = 2, n = 2)[2]
+# cf_f1 <- 2*((cf_precision * cf_recall) / (cf_precision + cf_recall))
+# print(c(cf_accuracy, cf_precision, cf_recall, cf_f1))
+# 
+# # Rename columns
+# gs_colnames <- c("threshold_value", "accuracy", "precision", "recall", "f1")
+# colnames(grid_search) <- gs_colnames
+# 
+# grid_search
 
 
 ```
