@@ -18,48 +18,13 @@ library("tidyverse")
 # Load data
 
 ```{r}
-df_all <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_all_incl_mtgprisoners.rds")
+df_model <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_final_logreg.rds")
 
 # Categorical
-# Categorical
-cat_vars <- c("hsyr04", # year mortgage began
-              "mgtype", # mortgage type
-              "hiqual_dv", #Highest qualification
-              "jbsoc00_cc", # Standard socio-economic classification (SOC 2000) of current job; condensed 3 digit version
-              "jbnssec8_dv", # Current job (eight class ns-sec)
-              "jbnssec5_dv", # Current job (five class ns-sec)
-              "jbnssec3_dv", # Current job (three class ns-sec)
-              "health", # Long-standing illness or disability
-              "country", # Country in the UK
-              "gor_dv", # Region in the UK
-              "urban_dv", # Urban or rural area, derived
-              "sex_dv", # sex, derived
-              # "marstat", # Marital status
-              "marstat_recat", # marital status recategorised
-              # "jbstat", # Employment status
-              "jbstat_recat", # jbstat recategorised
-              "jbsemp", # Employed or self-employed
-              # "racel_dv.x", # Ethnic group (self-reported) (indresp)
-              # "ethn_dv.x", # Ethnic group - derived from multiple sources (indresp)
-              "racel_recat", # recategorised ethnic group
-  # Need to re-run code to get this var #   "j1soc00_cc", # Standard Socio-economic Classification (SOC 2000) of first job after leaving full-time education. Condensed three-digit version (xwavedat)
-              "maid", # mother's ethnic group (xwavedat)
-              "macob", # mother's country of birth (xwavedat)
-              "maedqf", # mother's educational qualification when respondent was aged 14 (xwavedat)
-              "masoc00_cc", # Standard Occupational Classification 2000 of mother's job when respondent was aged 14 (xwavedat)
-              "paid", # father's ethnic group (xwavedat)
-              "pacob", # father's country of birth (xwavedat)
-              "paedqf", # father's educational qualification when respondent was aged 14 (xwavedat)
-              "pasoc00_cc", # Standard Occupational Classification 2000 of father's job when respondent was aged 14 (xwavedat)
-              "wavenumber") 
+cat_vars <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/dissertation/cat_vars.rds")
 
-vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_recat", "sex_dv", "marstat_recat", "fihhmnnet1_dv", "houscost1_dv", "is_mtgprisoner", "wavenumber", "pidp", "age_dv", "hhsize", "ukborn") # to do once i re-download all data w/ "hhsize"
-
-df_all[cat_vars] <- lapply(df_all[cat_vars], as.factor)
-df_all_post <- df_all[df_all$wavenumber >= 6, ]
-df_all$wavenumber <- as.factor(df_all$wavenumber)
-df_all_post$wavenumber <- as.factor(df_all_post$wavenumber)
-df_all_post$sex_dv[df_all_post$sex_dv == 0] <- NA
+# Vars of interest
+vars_of_interest <-  readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/dissertation/vars_of_interest.rds")
 
 
 ```
@@ -72,11 +37,7 @@ df_all_post$sex_dv[df_all_post$sex_dv == 0] <- NA
 * Other - household size ("hhsize")
 
 ```{r}
-vars_of_interest <- c("country", "gor_dv", "urban_dv", "racel_recat", "sex_dv", "marstat_recat", "fihhmnnet1_dv", "is_mtgprisoner", "wavenumber", "pidp", "age_dv", "hhsize", "ukborn") # to do once i re-download all data w/ "hhsize"
-
-df_interest <- select(df_all_post, one_of(vars_of_interest))
-df_interest$sex_dv <- as.factor(df_interest$sex_dv)
-
+vars_of_interest <-  readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/dissertation/vars_of_interest.rds")
 ```
 
 
@@ -88,16 +49,20 @@ require("ISLR")
 ```
 ## Training and testing sets
 ```{r}
+# Change is_mtgprisoner to numeric
+df_model$is_mtgprisoner <- as.numeric(df_model$is_mtgprisoner - 1) # to be able to calculate models, btwn 0 and 1
+
+
 # Get integer corresponding to % of data to use for testing
 pct_test <- 0.10
-N <- floor(pct_test * nrow(df_interest))
+N <- floor(pct_test * nrow(df_model))
 
 # Randomly sample N indices corresponding to rows in data
-test_rows <- sample(1:nrow(df_interest), N)
+test_rows <- sample(1:nrow(df_model), N)
 
 # Subset by row index
-train_set <- df_interest[-test_rows, ]
-test_set <- df_interest[test_rows, ]
+train_set <- df_model[-test_rows, ]
+test_set <- df_model[test_rows, ]
 
 # Create validation set
 pct_val <- 0.30
@@ -126,7 +91,7 @@ train_set <- train_set[rows, ]
 # Number of elements for each fold
 N <- floor((1/10) * nrow(train_set))
 
-fold_errors <- numeric(10)
+metrics <- data.frame()
 
 for (i in 1:10) {
   if (i < 10){
@@ -138,20 +103,55 @@ else {
   val <- train_set[val_idx, ]
   train <- train_set[-val_idx, ]
   
-  mod <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + fihhmnnet1_dv + houscost1_dv, data = train_set, family = binomial)
+  mod <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + age_dv + hiqual_dv + wavenumber + health + ukborn + hhsize, data = train_set, family = binomial)
   
 
   ## WOULD THIS ROW NEED TO BE REPLACED WITH THE METRIC THAT I'M OPTIMIZING FOR? (F1?)    
-  fold_errors[i] <- mean((predict.glm(mod, val, type = "response") - val$is_mtgprisoner)^2, na.rm = TRUE) ## WHY WAS I GETTING SO MANY NA's?
+  probs <- predict.glm(mod, val, type = "response") 
+  
+  # Get 0 or 1 predictions from probability (using threshold)
+  predictions <- ifelse(probs > 0.5, 1, 0) ## SET THRESHOLD BASED ON BEST ONE
+  actuals <- val$is_mtgprisoner
+  
+  # Create confusion matrix - row is predictions, columns is actuals
+  confusion_matrix <- table(predictions, actuals)
+  print(confusion_matrix)
+  
+  # Calculate accuracy
+  accuracy <- (confusion_matrix[1, 1] + confusion_matrix[2, 2]) / sum(confusion_matrix)
+
+  # Calculate precision -- when it predicts "yes", how often is it correct?
+  precision <- confusion_matrix[2, 2] / .rowSums(confusion_matrix, m = 2, n = 2)[2]  
+  
+  # Calculate recall -- when it predicts "yes", how many cases of real positives did it capture?
+  recall <- confusion_matrix[2, 2]/ .colSums(confusion_matrix, m = 2, n = 2)[2]
+  
+  # Calculate F1
+  f1 <- 2*((precision * recall) / (precision + recall))
+  
+  new_row <- c(i, accuracy, precision, recall, f1)
+  
+  metrics <- rbind(metrics, new_row)
+  colnames(metrics) <- c("i", "accuracy", "precision", "recall", "f1")
 }
 
-fold_errors
+metrics_avg <- lapply(metrics, mean)
+metrics_avg
+```
+# Use cv.glm()
+```{r}
+library("boot")
 
+train_mod <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + age_dv + hiqual_dv + wavenumber + health + ukborn + hhsize, data = train_set, family = binomial)
+
+cost_fn <- function(r, pi) mean(abs(r-pi)> 0.5) ## THRESHOLD BEING SET AT 0.5
+cv_results <- cv.glm(train_set, train_mod, cost = cost_fn, K = 10)
+cv_results
 ```
 
 ## Control for years
 ```{r}
-year_mod <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + fihhmnnet1_dv + houscost1_dv + wavenumber, data = train_set)
+year_mod <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + age_dv + hiqual_dv + wavenumber + health + ukborn + hhsize + hsyr04, data = train_set)
 
 
 # print summary using robust standard errors
@@ -168,13 +168,15 @@ fixed_mod <- clogit(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + 
 summary(fixed_mod)
 ```
 
+
 ## Predicting classes (using test set!)
 Source: http://www.sthda.com/english/articles/36-classification-methods-essentials/151-logistic-regression-essentials-in-r/#interpretation
 
 ### log reg
 ```{r}
-mod <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + fihhmnnet1_dv + houscost1_dv, data = train_set, family = binomial)
+mod <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + age_dv + hiqual_dv + wavenumber + health + ukborn + hhsize, data = train_set, family = binomial)
 probabilities <- predict.glm(mod, test_set, type = "response")
+
 predicted_classes <- ifelse(probabilities > 0.5, 1, 0)
 table(predicted_classes)
 
@@ -253,7 +255,7 @@ retrieved_fe <- sum(predicted_classes, na.rm = TRUE)
 
 ## Metrics
 ```{r}
-mod <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + fihhmnnet1_dv + houscost1_dv, data = train_set, family = binomial)
+mod <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + age_dv + hiqual_dv + wavenumber + health + ukborn + hhsize, data = train_set, family = binomial)
 
 probabilities <- predict.glm(mod, test_set, type = "response")
 
@@ -292,7 +294,7 @@ plot(roc_obj, main = "ROC curve", colorize = T)
 
 ## Model
 ```{r}
-glm_fit <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + jbstat_recat + marstat_recat + fihhmnnet1_dv + houscost1_dv, data = df_all, family = binomial)
+glm_fit <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + age_dv + hiqual_dv + wavenumber + health + ukborn + hhsize, data = df_all, family = binomial)
 
 summary(glm_fit)
 
@@ -350,6 +352,7 @@ source: https://medium.com/coinmonks/dealing-with-missing-data-using-r-3ae428da2
 
 ### Theoretical -- USE THIS ONE
 ```{r}
+library("mlr")
 
 ### baseline
 library("nnet")

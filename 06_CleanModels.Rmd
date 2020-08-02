@@ -39,9 +39,11 @@ df_interest_complete <- df_interest[complete.cases(df_interest) == TRUE, ]
 # unique(df_interest_complete$hsyr04) # no NA data in df_interest_complete
 # df_interest_complete <- droplevels(df_interest_complete)
 
+# Change is_mtgprisoner to numeric
+df_interest_complete$is_mtgprisoner <- as.numeric(df_interest_complete$is_mtgprisoner) # to be able to calculate models, btwn 0 and 1
+
 summary(df_interest_complete)
 
-df_clustervars <- df_interest_complete[, !names(df_interest_complete) %in% c("country", "pidp")] # Remove country and PIDP from data frame
 ```
 
 # Select vars for model
@@ -76,14 +78,23 @@ df_interest_complete <- df_interest_complete %>%
 df_interest_complete$ukborn_recat <- as.factor(df_interest_complete$ukborn_recat)
 df_interest_complete <- within(df_interest_complete, ukborn_recat <- relevel(ukborn_recat, ref = 1))
 
+
+df_logreg_final <- df_interest_complete
+saveRDS(df_logreg_final, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_final_logreg.rds")
+
 ```
 
 # log Reg Model
 ```{r}
-glm <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + age_dv + hiqual_dv + wavenumber + health + ukborn + hhsize, data = df_interest_complete, family = binomial)
+set.seed(1)
+df_interest_complete <- within(df_interest_complete, gor_dv <- relevel(gor_dv, ref = 7))
+df_interest_complete <- within(df_interest_complete, racel_recat <- relevel(racel_recat, ref = 'white'))
 
-summary(glm)
-exp(glm$coefficients)
+
+final_glm <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + age_dv + hiqual_dv + wavenumber + health + ukborn + hhsize, data = df_interest_complete, family = binomial)
+
+summary(final_glm)
+exp(final_glm$coefficients)
 ```
 ## Pretty Tables - Stargazer
 ```{r}
@@ -118,21 +129,311 @@ exp(hsyr_glm2$coefficients)
 
 ### Table
 ```{r}
-stargazer(glm, type = "text")
+stargazer(final_glm, type = "text")
 # options omit = c("coefficient name")
 ```
 
-`
+# Predictive Model
+## Create train and test set
+```{r}
+# Get integer corresponding to % of data to use for testing
+pct_test <- 0.10
+N <- floor(pct_test * nrow(df_interest_complete))
+
+# Randomly sample N indices corresponding to rows in data
+test_rows <- sample(1:nrow(df_interest_complete), N)
+
+# Subset by row index
+train_set <- df_interest_complete[-test_rows, ]
+test_set <- df_interest_complete[test_rows, ]
+
+```
+
+## Model
+```{r}
+train_mod <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + age_dv + hiqual_dv + wavenumber + health + ukborn + hhsize, data = train_set, family = binomial)
+
+```
+
+
+## Classification Metrics
+### threshold w/cost matrix 
+```{r}
+### introducing cost
+costs <- matrix(c(0, 2, 5, 0), 2)
+### Calculate the theoretical threshold for the positive class
+th <- costs[2,1]/(costs[2,1] + costs[1,2])
+th
+
+```
+### Grid Search
+```{r}
+
+# create empty df
+grid_search <- data.frame()
+
+library("plm")
+
+# Shuffle train set df
+set.seed(1)
+rows <- sample(1:nrow(train_set), nrow(train_set))
+train_set <- train_set[rows, ]
+
+# Number of elements for each fold
+N <- floor((1/10) * nrow(train_set))
+
+avg_metrics <- data.frame()
+
+for(j in seq(0.2, 0.6, 0.1)){
+  
+  metrics <- data.frame()
+  
+  for (i in 1:10) {
+    if (i < 10){
+      val_idx <- ((N * (i - 1) + 1):(N * i))
+    }
+  else {
+    val_idx <- ((N * (i - 1) + 1):nrow(train_set))
+  }
+    val <- train_set[val_idx, ]
+    train <- train_set[-val_idx, ]
+    
+  
+    ## WOULD THIS ROW NEED TO BE REPLACED WITH THE METRIC THAT I'M OPTIMIZING FOR? (F1?)    
+    probs <- predict.glm(train_mod, val, type = "response") 
+    
+    # Get 0 or 1 predictions from probability (using threshold)
+    predictions <- ifelse(probs > j, 1, 0) ## SET THRESHOLD BASED ON BEST ONE
+    actuals <- val$is_mtgprisoner
+    
+    # Create confusion matrix - row is predictions, columns is actuals
+    confusion_matrix <- table(predictions, actuals)
+    print(confusion_matrix)
+    
+    # Calculate accuracy
+    accuracy <- (confusion_matrix[1, 1] + confusion_matrix[2, 2]) / sum(confusion_matrix)
+  
+    # Calculate precision -- when it predicts "yes", how often is it correct?
+    precision <- confusion_matrix[2, 2] / .rowSums(confusion_matrix, m = 2, n = 2)[2]  
+    
+    # Calculate recall -- when it predicts "yes", how many cases of real positives did it capture?
+    recall <- confusion_matrix[2, 2]/ .colSums(confusion_matrix, m = 2, n = 2)[2]
+    
+    # Calculate F1
+    f1 <- 2*((precision * recall) / (precision + recall))
+    
+    new_row <- c(j, accuracy, precision, recall, f1)
+    
+    metrics <- rbind(metrics, new_row)
+    
+  }
+  
+  avg_row <- unlist(lapply(metrics, mean))
+  avg_metrics <- rbind(avg_metrics, avg_row)
+
+}
+colnames(avg_metrics) <- c("threshold", "accuracy", "precision", "recall", "f1")
+avg_metrics
+
+saveRDS(avg_metrics, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_predictivemodel.rds")
+
+## For 0.7 and 0.8, model predicting all as non-mortgageprisoners
+```
+
+```{r}
+probabilities <-  predict.glm(train_mod, train_set, type = "response")
+predicted_classes <- ifelse(probabilities > i, 1, 0)
+
+table(predicted_classes)
+
+retrieved <- sum(predicted_classes, na.rm = TRUE)
+truth <- as.numeric(test_set$is_mtgprisoner)
+
+# Accuracy
+accuracy_metric <- mean(predicted_classes == truth, na.rm = TRUE)
+
+# Precision
+precision_metric <- sum(predicted_classes & truth, na.rm = TRUE) / retrieved
+
+# Recall
+recall_metric <- sum(predicted_classes & truth, na.rm = TRUE) / sum(truth)
+
+# F1
+f1_metric <- 2 * precision_metric * recall_metric / (precision_metric + recall_metric)
+
+new_row <- c(i, accuracy_metric, precision_metric, recall_metric, f1_metric)
+  
+grid_search <- rbind(grid_search, new_row)
+  
+
+
+# Rename columns
+gs_colnames <- c("threshold_value", "accuracy", "precision", "recall", "f1")
+colnames(grid_search) <- gs_colnames
+
+grid_search
+
+
+```
+
+
+## Test error
+```{r}
+test_probs <- predict.glm(train_mod, test_set, type = "response")
+
+predicted_classes <- ifelse(test_probs > th, 2, 1)
+
+table("predict" = predicted_classes, "truth" = test_set$is_mtgprisoner )
+
+retrieved <- sum(predicted_classes, na.rm = TRUE)
+truth <- as.numeric(test_set$is_mtgprisoner)
+
+# Accuracy
+accuracy_metric <- mean(predicted_classes == truth, na.rm = TRUE)
+
+# Precision
+precision_metric <- sum(predicted_classes & truth, na.rm = TRUE) / retrieved
+
+# Recall
+recall_metric <- sum(predicted_classes & truth, na.rm = TRUE) / sum(truth)
+
+# F1
+f1_metric <- 2 * precision_metric * recall_metric / (precision_metric + recall_metric)
+
+print(c(accuracy_metric, precision_metric, recall_metric, f1_metric))
+
+table("predicted" = predicted_classes, "truth" = truth)
+
+```
+
+
+## AUC
+```{r}
+library("pROC")
+predicted_classes <- ifelse(probabilities > 0.25, 1, 0)
+roc_obj <- roc(test_set$is_mtgprisoner, predicted_classes)
+auc(roc_obj)
+
+plot(roc_obj, main = "ROC curve", colorize = T)
+```
+
+
+# SHIT BELOW IS FUNKY 
+## MLR task - Cost Matrix
+```{r}
+library("mlr")
+### baseline
+library("nnet")
+
+df_interest_complete$is_mtgprisoner <- as.factor(df_interest_complete$is_mtgprisoner)
+
+# Create task
+mtgprisoner_task <- makeClassifTask(data = train_set, target = "is_mtgprisoner", positive = "1")
+
+# Train and predict posterior probabilities
+lrn <- makeLearner("classif.multinom", predict.type = "prob", trace = FALSE)
+mod = train(lrn, mtgprisoner_task)
+
+### introducing cost
+costs <- matrix(c(0, 2, 5, 0), 2)
+colnames(costs) <- rownames(costs) <- getTaskClassLevels(mtgprisoner_task)
+costs
+
+### create a new performance Measure to calculate average cost 
+mtgprisoner_costs <- makeCostMeasure(id = "mtgprisoner_costs", name = "Mtg prisoner costs", costs = costs, best = 0, worst = 5)
+mtgprisoner_costs
+
+
+### Calculate the theoretical threshold for the positive class
+th <- costs[2,1]/(costs[2,1] + costs[1,2])
+th
+
+# Predict class labels according to the theoretical threshold
+pred = predict(mod, task = mtgprisoner_task)
+pred.th = setThreshold(pred, th)
+
+### create a new performance Measure to calculate average cost 
+mtgprisoner_costs <- makeCostMeasure(id = "mtgprisoner_costs", name = "Mtg prisoner costs", costs = costs,
+  best = 0, worst = 5)
+mtgprisoner_costs
+
+## Calculate performance
+
+### for comparison -- default threshold (0.5)
+performance(setThreshold(r$pred, 0.5), measures = list(mtgprisoner_costs, f1))
+### new threshold 
+performance(setThreshold(r$pred, th), measures = list(mtgprisoner_costs, f1))
+
+```
+
+## Cross-validate
+```{r}
+# Cross-validated performance with theoretical thresholds
+rin <- makeResampleInstance("CV", iters = 10, task = mtgprisoner_task)
+lrn <- makeLearner("classif.multinom", predict.type = "prob", predict.threshold = th, trace = FALSE)
+r <- resample(lrn, mtgprisoner_task, resampling = rin, list(mtgprisoner_costs, f1), show.info = FALSE)
+r
 
 
 
+## Metrics for cross-validated model
+mean(r$pred$data$response == r$pred$data$truth)
+
+prediction <- as.numeric(r$pred$data$response)
+truth <- as.numeric(r$pred$data$truth)
+
+retrieved <- sum(prediction)
+
+# Accuracy
+accuracy_metric <- mean(predicted_classes == truth, na.rm = TRUE)
+
+# Precision
+precision_metric <- sum(predicted_classes & truth, na.rm = TRUE) / retrieved
+
+# Recall
+recall_metric <- sum(predicted_classes & truth, na.rm = TRUE) / sum(truth)
+
+# F1
+f1_metric <- 2 * precision_metric * recall_metric / (precision_metric + recall_metric)
+
+new_row <- c(i, accuracy_metric, precision_metric, recall_metric, f1_metric)
 
 
+## plot the average costs as well as any other performance measure versus possible threshold values for the positive class in [0,1]
+d <- generateThreshVsPerfData(r, measures = list(mtgprisoner_costs, f1))
+plotThreshVsPerf(d, mark.th = th)
 
+# Tune threshold
+tune.res = tuneThreshold(pred = r$pred, measure = mtgprisoner_costs)
+tune.res
+th_optimal <- tune.res$th
 
+pred.th_optimal = setThreshold(pred, th_optimal)
 
+performance(setThreshold(r$pred, th_optimal), measures = list(mtgprisoner_costs, f1))
 
+```
 
+### Compare empirical vs. theoretical
+```{r}
+
+d = generateThreshVsPerfData(r, measures = list(mtgprisoner_costs, f1))
+plotThreshVsPerf(d, mark.th = th)
+
+d = generateThreshVsPerfData(r, measures = list(mtgprisoner_costs, f1))
+plotThreshVsPerf(d, mark.th = th_optimal)
+
+```
+
+## 10-fold cv
+```{r}
+library("boot")
+
+cost_fn <- function(r, pi) mean(abs(r-pi)> th ) ## THRESHOLD BEING SET AT 0.5
+cv_results <- cv.glm(train_set, train_mod, cost = cost_fn, K = 10)
+cv_results$delta[1] # error = 0.3076923
+
+```
 
 
 
