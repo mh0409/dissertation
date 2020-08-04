@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r}
-pkgs_used <- c("tidyverse", "ggplot2", "naniar", "stringr", "tibble", "haven", "caret", "PCAmixdata", "cluster", "factoextra", "mclust")
+pkgs_used <- c("tidyverse", "ggplot2", "naniar", "stringr", "tibble", "haven", "caret", "PCAmixdata", "cluster", "factoextra", "mclust", "stargazer", "mlr")
 
 for(i in pkgs_used){
   print(citation(i))

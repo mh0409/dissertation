@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 Note to sef: the data is only looking at mortgage prisoners after 2014 (when regulation was passed).
 
 ```{r}
-c <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners_postlegis.rds")
+df_postlegis <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners_postlegis.rds")
 # df_prelegis <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_mtgprisoners_prelegis.rds") # don't need for now
 
 ```
@@ -175,7 +175,7 @@ sub_grp2
 ## 525 954 
 
 
-plot(agg_hclust, hang = -1) # from plot cut into 4?
+# plot(agg_hclust, hang = -1) # from plot cut into 4?
 
 # Cut tree into 4 groups
 sub_grp4 <- cutree(as.hclust(hc_agnes_ward), k = 4) # suggested by PAM (see below)
@@ -222,7 +222,7 @@ gower_coph_cor <- function(x) {
   cor(as.dist(gower_dist), cophenetic(res.hc3))
 }
 
-map_dbl(m, coph_cor)
+map_dbl(m, gower_coph_cor)
 ## average    single  complete  weighted 
 ## 0.5039878 0.2905799 0.4117255 0.4031402
 
@@ -427,14 +427,13 @@ df_fourclust_num_melt <- melt(df_fourclust_num_melt, id.var = "cluster4")
 df_fourclust_num_melt$cluster4 <- as.factor(df_fourclust_num_melt$cluster4)
 
 
-
 ```
 ### four clust box plots
 ```{r}
 pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_4clust_num_boxplots.pdf")
 ggplot(data = df_fourclust_num_melt, aes(x = cluster4, y = value, group = cluster4, fill = cluster4)) +
   stat_summary(fun.data = calc_boxplot_stat, geom="boxplot") + 
-  facet_wrap(~variable, scales = "free")+
+  facet_wrap(~variable, scales = "free") +
   coord_flip()
 dev.off()
 
@@ -495,20 +494,27 @@ ggplot(data = df_cat_percent, aes(x = value, y = pct,  fill = cluster2)) +
 dev.off()
 
 
+pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_2clust_pctFILL_boxplots.pdf")
+ggplot(data = df_cat_percent, aes(x = value, y = pct,  fill = cluster2)) +
+  geom_col(position = "fill") + 
+  facet_wrap(~variable, scales = "free") +
+  ggtitle("% within cluster")
+dev.off()
+
 #### THIS LOOKS AT IF I WANNA SEE % OF ALL POPULATION
-# df_cat_percent <- df_categorical %>%
-#     melt(id.var = "cluster4") %>%
-#   group_by(variable, cluster4) %>%
-#   count(value) %>%
-#   mutate(pct = n / nrow(df_categorical) * 100)
-#  
+df_cat_percent <- df_categorical %>%
+    melt(id.var = "cluster2") %>%
+  group_by(variable, cluster2, value) %>%
+  count(value) %>%
+  mutate(pct = n / nrow(df_categorical) * 100)
+
 
 ## NOW UPDATE THIS GRAPH TO SHOW
-# pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_2clust_pct_boxplots.pdf") ## CHANGE FILE NAME
-# ggplot(data = df_cat_percent, aes(x = value, y = pct,  fill = cluster2)) +
-#   geom_col(position = "dodge") + 
-#   facet_wrap(~variable, scales = "free")
-# dev.off()
+pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_2clust_pctall_boxplots.pdf") ## CHANGE FILE NAME
+ggplot(data = df_cat_percent, aes(x = value, y = pct,  fill = cluster2)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~variable, scales = "free")
+dev.off()
 
 ```
 
@@ -548,6 +554,8 @@ ggplot(data = df_fourclust_cat_melt, aes(x = value,  fill = cluster4)) +
   facet_wrap(~variable, scales = "free") 
 dev.off()
 
+
+
 ## now make one based on proportion of cluster population
 df_cat_percent <- df_categorical %>%
     melt(id.var = "cluster4") %>%
@@ -564,20 +572,27 @@ ggplot(data = df_cat_percent, aes(x = value, y = pct,  fill = cluster4)) +
   ggtitle("% within cluster")
 dev.off()
 
+pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_4clust_pctFILL_boxplots.pdf")
+ggplot(data = df_cat_percent, aes(x = value, y = pct,  fill = cluster4)) +
+  geom_col(position = "fill") + 
+  facet_wrap(~variable, scales = "free") +
+  ggtitle("% within cluster")
+dev.off()
+
 #### THIS LOOKS AT IF I WANNA SEE % OF ALL POPULATION
-# df_cat_percent <- df_categorical %>%
-#     melt(id.var = "cluster4") %>%
-#   group_by(variable, cluster4) %>%
-#   count(value) %>%
-#   mutate(pct = n / nrow(df_categorical) * 100)
-#  
-#
-## NOW UPDATE THIS GRAPH TO SHOW
-# pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_4clust_pct_boxplots.pdf") ## UPDATE NAME
-# ggplot(data = df_cat_percent, aes(x = value, y = pct,  fill = cluster4)) +
-#   geom_col(position = "dodge") + 
-#   facet_wrap(~variable, scales = "free")
-# dev.off()
+df_cat_percent <- df_categorical %>%
+    melt(id.var = "cluster4") %>%
+  group_by(variable, cluster4) %>%
+  count(value) %>%
+  mutate(pct = n / nrow(df_categorical) * 100)
+
+
+# NOW UPDATE THIS GRAPH TO SHOW
+pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_4clust_pctofall_boxplots.pdf") ## UPDATE NAME
+ggplot(data = df_cat_percent, aes(x = value, y = pct,  fill = cluster4)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~variable, scales = "free")
+dev.off()
 
 ```
 

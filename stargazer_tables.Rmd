@@ -1,0 +1,31 @@
+---
+title: "stargazer_tables"
+author: "Maria Jose Herrera"
+date: "8/4/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+## Correlation of num vars + mtg prisoner status
+
+% Table created by stargazer v.5.2.2 by Marek Hlavac, Harvard University. E-mail: hlavac at fas.harvard.edu
+% Date and time: Tue, Aug 04, 2020 - 15:58:51
+\begin{table}[!htbp] \centering 
+  \caption{} 
+  \label{} 
+\begin{tabular}{@{\extracolsep{5pt}} cccc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ & age\_dv & hscost & hhsize \\ 
+\hline \\[-1.8ex] 
+cor\_estimates & $0.089$ & $0.027$ & $0.112$ \\ 
+p\_values & $0$ & $0.058$ & $0$ \\ 
+\hline \\[-1.8ex] 
+\end{tabular} 
+\end{table}
+

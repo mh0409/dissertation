@@ -62,6 +62,69 @@ df_interest_complete <- droplevels(df_interest_complete)
 
 saveRDS(df_interest_complete, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_interest_complete.rds")
 ```
+## Corrplots - num
+```{r}
+library("ggplot2")
+library("ggcorrplot")
+
+
+df_interest_complete$pidp <- as.factor(df_interest_complete$pidp)
+# select numeric variables
+df_all_num <- dplyr::select_if(df_interest_complete, is.numeric)
+df_all_num$fihhmnnet1_dv <- NULL
+df_all_num$houscost1_dv <- NULL# dropping since it is part of definiton and is not in log reg
+
+# calulate the correlations
+r <- cor(df_all_num, use="complete.obs")
+round(r,2)
+
+ggcorrplot(r, 
+           hc.order = TRUE, 
+           type = "lower",
+           lab = TRUE)
+
+# Point biserial correlation! 
+cor_estimates <- numeric()
+p_values <- numeric()
+for(i in seq(1:length(colnames(df_all_num)))){
+  cont_var <- as.vector(unlist(df_all_num[, i]))
+  outcome_var <- as.numeric(df_interest_complete[['is_mtgprisoner']])
+  test <- cor.test(cont_var, outcome_var)
+  cor_estimates <- append(test$estimate, cor_estimates)
+  p <- test$p.value
+  p <- round(p, 5)
+  p_values <- append(p, p_values)
+}
+
+
+names(cor_estimates) <- c("age_dv", "hscost", "hhsize")
+names(p_values) <- c("age_dv", "hscost", "hhsize")
+
+cor_results <- data.frame(cor_estimates, p_values)
+cor_results <- t(cor_results)
+
+saveRDS(cor_results, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/num_mtgprisoner_correlation.rds")
+
+
+```
+## Corrplots - cat
+```{r}
+### FIX TO ONLY USE VARS IN LOG REG: gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + age_dv + hiqual_dv + wavenumber + health + ukborn + hhsize
+library("vcd")
+catcorrm <- function(vars, dat) sapply(vars, function(y) sapply(vars, function(x) assocstats(table(dat[,x], dat[,y]))$cramer))
+
+df_all_cat <- as.data.frame(dplyr::select_if(df_interest_complete, is.factor))
+df_all_cat$pidp <- NULL 
+df_all_cat$country <- NULL
+df_all_cat$hsyr04 <- NULL
+df_all_cat$ukborn_recat <- NULL
+
+r_cat <- catcorrm(colnames(df_all_cat), df_all_cat)
+r_cat
+ggcorrplot(r_cat, 
+           hc.order = TRUE, 
+           type = "lower")
+```
 
 # Recategorize 'ukborn' into yes / no
 ```{r}
@@ -331,7 +394,7 @@ for(j in seq(0.15, 0.25, 0.01)){
     accuracy <- (confusion_matrix[1, 1] + confusion_matrix[2, 2]) / sum(confusion_matrix)
   
     # Calculate precision -- when it predicts "yes", how often is it correct?
-    precision <- confusion_matrix[2, 2] / .rowSums(confusion_matrix, m = 2, n = 2)[2]  
+    precision <- confusion_matrix[2, 2] / (confusion_matrix[2,2]+ confusion_matrix[2,1])
     
     # Calculate recall -- when it predicts "yes", how many cases of real positives did it capture?
     recall <- confusion_matrix[2, 2]/ .colSums(confusion_matrix, m = 2, n = 2)[2]
@@ -339,7 +402,10 @@ for(j in seq(0.15, 0.25, 0.01)){
     # Calculate F1
     f1 <- 2*((precision * recall) / (precision + recall))
     
-    new_row <- c(j, accuracy, precision, recall, f1)
+    # Calcualte specificity
+    specificity <- confusion_matrix[1, 1]/(confusion_matrix[1, 1] + confusion_matrix[1, 2]) 
+    
+    new_row <- c(j, accuracy, precision, recall, specificity, f1)
     
     metrics <- rbind(metrics, new_row)
     
@@ -349,7 +415,7 @@ for(j in seq(0.15, 0.25, 0.01)){
   avg_metrics <- rbind(avg_metrics, avg_row)
 
 }
-colnames(avg_metrics) <- c("threshold", "accuracy", "precision", "recall", "f1")
+colnames(avg_metrics) <- c("threshold", "accuracy", "precision", "recall","specificity", "f1")
 avg_metrics
 
 saveRDS(avg_metrics, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_predictivemodel_small.rds")
@@ -500,11 +566,6 @@ costs <- matrix(c(0, 2, 5, 0), 2)
 colnames(costs) <- rownames(costs) <- getTaskClassLevels(mtgprisoner_task)
 costs
 
-### create a new performance Measure to calculate average cost 
-mtgprisoner_costs <- makeCostMeasure(id = "mtgprisoner_costs", name = "Mtg prisoner costs", costs = costs, best = 0, worst = 5)
-mtgprisoner_costs
-
-
 ### Calculate the theoretical threshold for the positive class
 th <- costs[2,1]/(costs[2,1] + costs[1,2])
 th
@@ -517,6 +578,12 @@ pred.th = setThreshold(pred, th)
 mtgprisoner_costs <- makeCostMeasure(id = "mtgprisoner_costs", name = "Mtg prisoner costs", costs = costs,
   best = 0, worst = 5)
 mtgprisoner_costs
+
+# Cross-validated performance with theoretical thresholds
+rin <- makeResampleInstance("CV", iters = 10, task = mtgprisoner_task)
+lrn <- makeLearner("classif.multinom", predict.type = "prob", predict.threshold = th, trace = FALSE)
+r <- resample(lrn, mtgprisoner_task, resampling = rin, list(mtgprisoner_costs, f1), show.info = FALSE)
+r
 
 ## Calculate performance
 
