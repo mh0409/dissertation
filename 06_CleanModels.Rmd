@@ -78,10 +78,12 @@ df_all_num$houscost1_dv <- NULL# dropping since it is part of definiton and is n
 r <- cor(df_all_num, use="complete.obs")
 round(r,2)
 
+pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_corrplots_num.pdf")
 ggcorrplot(r, 
            hc.order = TRUE, 
            type = "lower",
            lab = TRUE)
+dev.off()
 
 # Point biserial correlation! 
 cor_estimates <- numeric()
@@ -121,9 +123,13 @@ df_all_cat$ukborn_recat <- NULL
 
 r_cat <- catcorrm(colnames(df_all_cat), df_all_cat)
 r_cat
+
+pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_corrplots_cat.pdf")
 ggcorrplot(r_cat, 
            hc.order = TRUE, 
-           type = "lower")
+           type = "lower",
+           lab = TRUE)
+dev.off()
 ```
 
 # Recategorize 'ukborn' into yes / no

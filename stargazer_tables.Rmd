@@ -9,14 +9,27 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## Formula for gower dissimilarity
 
+In particular, $d_{i,j,k}$ represents the distance between the ith and jth unit computed considering the kth variable
+$d_{i,j} = \frac{\Sigma_k(\delta_{i,j,k} \times d_{i,j,k})}{\Sigma_k({\delta}_{i,j,k})}$
+
+Distance depends on the nature of the variable:
+
+logical columns are considered as asymmetric binary variables, for such case d_ijk = 0 if x_ik = x_jk = TRUE, 1 otherwise;
+
+factor or character columns are considered as categorical nominal variables and d_ijk = 0 if x_ik = x_jk, 1 otherwise;
+
+numeric columns are considered as interval-scaled variables and
+
+where $d_{i,j,k} = \frac{| x_{i,k} - x_{j,k} |} {R_k}$
+
+where $R_k =$ range of the $k$th variable
 
 ## Correlation of num vars + mtg prisoner status
-
-% Table created by stargazer v.5.2.2 by Marek Hlavac, Harvard University. E-mail: hlavac at fas.harvard.edu
 % Date and time: Tue, Aug 04, 2020 - 15:58:51
 \begin{table}[!htbp] \centering 
-  \caption{} 
+  \caption{Correlation of continuous variables with mortgage prisoner} 
   \label{} 
 \begin{tabular}{@{\extracolsep{5pt}} cccc} 
 \\[-1.8ex]\hline 
@@ -28,4 +41,20 @@ p\_values & $0$ & $0.058$ & $0$ \\
 \hline \\[-1.8ex] 
 \end{tabular} 
 \end{table}
+
+# Cost matrix 
+% Date and time: Tue, Aug 04, 2020 - 17:48:43
+\begin{table}[!htbp] \centering 
+  \caption{Cost matrix} 
+  \label{} 
+\begin{tabular}{@{\extracolsep{5pt}} ccc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ & 0 & 1 \\ 
+\hline \\[-1.8ex] 
+0 & $0$ & $5$ \\ 
+1 & $2$ & $0$ \\ 
+\hline \\[-1.8ex] 
+\end{tabular} 
+\end{table} 
 
