@@ -9,22 +9,294 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+```{r}
+library("tidyverse")
+library("ggplot2")
+library("reshape2")
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
 ```
 
-## Including Plots
+# Load data
+```{r}
+df_postlegis <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/df_all_postlegis.rds")
 
-You can also embed plots, for example:
+vars_of_interest <- readRDS("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/dissertation/vars_of_interest.rds")
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+df_interest <- select(df_postlegis, one_of(vars_of_interest))
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+# Categorical vars
+```{r}
+df_numeric <- df_interest %>% # excluding PIDP
+  select_if(is.numeric)
+df_numeric
+
+```
+
+# Numeric vars
+```{r}
+df_categorical <- df_interest %>% # excluding PIDP
+  select_if(is.factor)
+df_categorical
+
+
+```
+
+
+##### BELOW IS FROM CLUSTERING FILE ###
+#### Summarizing numeric
+
+```{r}
+library("reshape2")
+# 2 groups
+twocluster_num_mean <- df_interest %>% # excluding PIDP
+  group_by(is_mtgprisoner) %>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+twocluster_num_mean
+
+saveRDS(twocluster_num_mean, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_twocluster_num_mean.rds")
+
+twocluster_num_median <- df_clustervars %>% # excluding PIDP
+  group_by(cluster2) %>%
+  summarise_if(is.numeric, median, na.rm = TRUE)
+saveRDS(twocluster_num_median, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_twocluster_num_median.rds")
+twocluster_num_median
+
+
+df_numeric <- df_clustervars %>%
+  group_by(cluster2) %>%
+  select_if(is.numeric)
+
+df_twoclust_num_melt <- df_numeric
+df_twoclust_num_melt$cluster4 <- NULL
+df_twoclust_num_melt$pam_clusters <- NULL
+
+df_twoclust_num_melt <- melt(df_twoclust_num_melt, id.var = "cluster2")
+df_twoclust_num_melt$cluster2 <- as.factor(df_twoclust_num_melt$cluster2)
+
+
+
+```
+
+### 2 clust Box plots
+```{r}
+calc_boxplot_stat <- function(x) {
+  coef <- 1.5
+  n <- sum(!is.na(x))
+  # calculate quantiles
+  stats <- quantile(x, probs = c(0.0, 0.25, 0.5, 0.75, 1.0))
+  names(stats) <- c("ymin", "lower", "middle", "upper", "ymax")
+  iqr <- diff(stats[c(2, 4)])
+  # set whiskers
+  outliers <- x < (stats[2] - coef * iqr) | x > (stats[4] + coef * iqr)
+  if (any(outliers)) {
+    stats[c(1, 5)] <- range(c(stats[2:4], x[!outliers]), na.rm = TRUE)
+  }
+  return(stats)
+}
+
+pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_2clust_num_boxplots.pdf")
+ggplot(data = df_twoclust_num_melt, aes(x = cluster2, y = value, group = cluster2, fill = cluster2)) +
+  stat_summary(fun.data = calc_boxplot_stat, geom="boxplot") + 
+  facet_wrap(~variable, scales="free") +
+  coord_flip()
+dev.off()
+
+```
+
+```{r}
+# 4 df_interest_complete
+fourcluster_num_mean <- df_clustervars %>%
+  group_by(cluster4) %>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+
+saveRDS(fourcluster_num_mean, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_fourcluster_num_mean.rds")
+
+fourcluster_num_median <- df_clustervars %>% # excluding PIDP
+  group_by(cluster4) %>%
+  summarise_if(is.numeric, median, na.rm = TRUE)
+saveRDS(fourcluster_num_median, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_fourcluster_num_median.rds")
+
+df_numeric <- df_clustervars %>%
+  group_by(cluster4) %>%
+  select_if(is.numeric)
+
+df_fourclust_num_melt <- df_numeric
+df_fourclust_num_melt$cluster2 <- NULL
+df_fourclust_num_melt$pam_clusters <- NULL
+
+df_fourclust_num_melt <- melt(df_fourclust_num_melt, id.var = "cluster4")
+df_fourclust_num_melt$cluster4 <- as.factor(df_fourclust_num_melt$cluster4)
+
+
+```
+### four clust box plots
+```{r}
+pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_4clust_num_boxplots.pdf")
+ggplot(data = df_fourclust_num_melt, aes(x = cluster4, y = value, group = cluster4, fill = cluster4)) +
+  stat_summary(fun.data = calc_boxplot_stat, geom="boxplot") + 
+  facet_wrap(~variable, scales = "free") +
+  coord_flip()
+dev.off()
+
+```
+
+#### 2 cluster Summarizing categorical data
+```{r}
+factor_cols <- colnames(df_clustervars[,sapply(df_clustervars, is.factor) & colnames(df_clustervars) != c("pidp", "hidp")])
+
+cat_data <- df_clustervars %>% 
+  select(factor_cols)
+
+for(i in seq(1:ncol(cat_data))){
+  var <- colnames(cat_data)[i]
+  column_data <- cat_data[[i]]
+  print(colnames(cat_data[i]))
+  print(prop.table(table(cluster = df_clustervars$cluster2, column_data), margin = 1))
+}
+```
+
+### 2 clust cat box plots
+```{r}
+df_categorical <- df_clustervars %>%
+  group_by(cluster2) %>%
+  select_if(is.factor)
+
+df_categorical$cluster2 <- as.factor(df_categorical$cluster2)
+
+df_twoclust_cat_melt <- df_categorical
+df_twoclust_cat_melt$cluster4 <- NULL
+df_twoclust_cat_melt$pam_clusters <- NULL
+
+df_twoclust_cat_melt <- melt(df_twoclust_cat_melt, id.var = "cluster2")
+df_twoclust_cat_melt$cluster2 <- as.factor(df_twoclust_cat_melt$cluster2)
+
+pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_2clust_count_boxplots.pdf")
+ggplot(data = df_twoclust_cat_melt, aes(x = value,  fill = cluster2)) +
+  geom_bar(position = "dodge") + 
+  facet_wrap(~variable, scales = "free")
+dev.off()
+
+## now make one based on proportion of cluster population
+df_cat_percent <- df_categorical %>%
+    melt(id.var = "cluster2") %>%
+  group_by(variable, cluster2) %>%
+  count(value) %>%
+  mutate(pct = n / sum(n) * 100)
+
+
+   
+
+## NOW UPDATE THIS GRAPH TO SHOW
+pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_2clust_pct_boxplots.pdf")
+ggplot(data = df_cat_percent, aes(x = value, y = pct,  fill = cluster2)) +
+  geom_col(position = "dodge") + 
+  facet_wrap(~variable, scales = "free") +
+  ggtitle("% within cluster")
+dev.off()
+
+
+pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_2clust_pctFILL_boxplots.pdf")
+ggplot(data = df_cat_percent, aes(x = value, y = pct,  fill = cluster2)) +
+  geom_col(position = "fill") + 
+  facet_wrap(~variable, scales = "free") +
+  ggtitle("% within cluster")
+dev.off()
+
+#### THIS LOOKS AT IF I WANNA SEE % OF ALL POPULATION
+df_cat_percent <- df_categorical %>%
+    melt(id.var = "cluster2") %>%
+  group_by(variable, cluster2, value) %>%
+  count(value) %>%
+  mutate(pct = n / nrow(df_categorical) * 100)
+
+
+## NOW UPDATE THIS GRAPH TO SHOW
+pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_2clust_pctall_boxplots.pdf") ## CHANGE FILE NAME
+ggplot(data = df_cat_percent, aes(x = value, y = pct,  fill = cluster2)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~variable, scales = "free")
+dev.off()
+
+```
+
+### 4 cluster cat vars
+```{r}
+factor_cols <- colnames(df_clustervars[,sapply(df_clustervars, is.factor) & colnames(df_clustervars) != c("pidp", "hidp")])
+
+cat_data <- df_clustervars %>% 
+  select(factor_cols)
+
+for(i in seq(1:ncol(cat_data))){
+  var <- colnames(cat_data)[i]
+  column_data <- cat_data[[i]]
+  print(colnames(cat_data[i]))
+  print(prop.table(table(cluster = df_clustervars$cluster4, column_data), margin = 1))
+}
+```
+
+### 4 clust cat vars
+```{r}
+df_categorical <- df_clustervars %>%
+  group_by(cluster4) %>%
+  select_if(is.factor)
+
+df_categorical$cluster4 <- as.factor(df_categorical$cluster4)
+
+df_fourclust_cat_melt <- df_categorical
+df_fourclust_cat_melt$cluster2 <- NULL
+df_fourclust_cat_melt$pam_clusters <- NULL
+
+df_fourclust_cat_melt <- melt(df_fourclust_cat_melt, id.var = "cluster4")
+df_fourclust_cat_melt$cluster4 <- as.factor(df_fourclust_cat_melt$cluster4)
+
+pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_2clust_count_boxplots.pdf")
+ggplot(data = df_fourclust_cat_melt, aes(x = value,  fill = cluster4)) +
+  geom_bar(position = "dodge") + 
+  facet_wrap(~variable, scales = "free") 
+dev.off()
+
+
+
+## now make one based on proportion of cluster population
+df_cat_percent <- df_categorical %>%
+    melt(id.var = "cluster4") %>%
+  group_by(variable, cluster4) %>%
+  count(value) %>%
+  mutate(pct = n / sum(n) * 100)
+
+    
+## NOW UPDATE THIS GRAPH TO SHOW
+pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_4clust_pct_boxplots.pdf")
+ggplot(data = df_cat_percent, aes(x = value, y = pct,  fill = cluster4)) +
+  geom_col(position = "dodge") + 
+  facet_wrap(~variable, scales = "free") +
+  ggtitle("% within cluster")
+dev.off()
+
+pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_4clust_pctFILL_boxplots.pdf")
+ggplot(data = df_cat_percent, aes(x = value, y = pct,  fill = cluster4)) +
+  geom_col(position = "fill") + 
+  facet_wrap(~variable, scales = "free") +
+  ggtitle("% within cluster")
+dev.off()
+
+#### THIS LOOKS AT IF I WANNA SEE % OF ALL POPULATION
+df_cat_percent <- df_categorical %>%
+    melt(id.var = "cluster4") %>%
+  group_by(variable, cluster4) %>%
+  count(value) %>%
+  mutate(pct = n / nrow(df_categorical) * 100)
+
+
+# NOW UPDATE THIS GRAPH TO SHOW
+pdf("/Users/mariajoseherrera/Documents/LSE_new/03_Dissertation/Understanding_Society/results_4clust_pctofall_boxplots.pdf") ## UPDATE NAME
+ggplot(data = df_cat_percent, aes(x = value, y = pct,  fill = cluster4)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~variable, scales = "free")
+dev.off()
+
+```
