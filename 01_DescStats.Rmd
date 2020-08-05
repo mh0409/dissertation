@@ -46,6 +46,27 @@ df_categorical
 ```
 
 
+# Race
+```{r}
+# Looking at all mortgage holders
+df_race <- df_interest_complete %>%
+  group_by(racel_recat) %>%
+  select_if(is.numeric)
+
+df_race_melt <- df_race
+
+df_race_melt <- melt(df_race_melt, id.var = "racel_recat")
+
+test <- df_race_melt %>%
+  group_by(racel_recat, variable) %>% 
+  summarise_if(is.numeric, median)
+
+pivot_wider(test, racel_recat, variable)
+
+
+```
+
+
 ##### BELOW IS FROM CLUSTERING FILE ###
 #### Summarizing numeric
 

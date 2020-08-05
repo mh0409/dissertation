@@ -156,7 +156,7 @@ saveRDS(df_logreg_final, "/Users/mariajoseherrera/Documents/LSE_new/03_Dissertat
 # log Reg Model
 ```{r}
 set.seed(1)
-df_interest_complete <- within(df_interest_complete, gor_dv <- relevel(gor_dv, ref = 7))
+df_interest_complete <- within(df_interest_complete, gor_dv <- relevel(gor_dv, ref = "7"))
 df_interest_complete <- within(df_interest_complete, racel_recat <- relevel(racel_recat, ref = 'white'))
 
 
@@ -165,6 +165,24 @@ final_glm <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + mar
 summary(final_glm)
 exp(final_glm$coefficients)
 ```
+
+## Robustness - Results without London
+```{r}
+noLondon_glm <- glm(is_mtgprisoner ~ gor_dv + urban_dv + racel_recat + sex_dv + marstat_recat + hscost + age_dv + hiqual_dv + wavenumber + health + ukborn + hhsize, data = df_interest_complete[df_interest_complete$gor_dv != "7", ], family = binomial)
+
+summary(noLondon_glm)
+
+```
+
+## Robustness - Interaction (urban x gor_dv)
+```{r}
+urbangor_glm <- glm(is_mtgprisoner ~ gor_dv + urban_dv + gor_dv*urban_dv + racel_recat + sex_dv + marstat_recat + hscost + age_dv + hiqual_dv + wavenumber + health + ukborn + hhsize, data = df_interest_complete, family = binomial)
+
+summary(urbangor_glm)
+```
+
+
+
 ## Pretty Tables - Stargazer
 ```{r}
 library("stargazer")
